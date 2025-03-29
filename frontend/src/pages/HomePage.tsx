@@ -2,61 +2,56 @@
 import { FC, useState, useEffect } from 'react';
 import PostCard from '../components/PostCard';
 import { Post } from '../types';
-// REMOVE a linha abaixo - não vamos mais importar os dados mockados
-// import { posts as postsData } from '../data/posts';
 
-// Definindo a URL base da nossa API falsa
-const API_URL = 'http://localhost:3001';
+// NOVA URL BASE apontando para o nosso backend Node.js/Express
+const API_BASE_URL = 'http://localhost:4000'; // Ou a porta que você definiu no .env do backend
 
 const HomePage: FC = () => {
-  // Os estados permanecem os mesmos
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null); // Estado para guardar mensagens de erro
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Função assíncrona para buscar os posts
     const fetchPosts = async (): Promise<void> => {
-      // Reinicia o estado de erro e loading
       setLoading(true);
       setError(null);
       try {
-        // Faz a requisição GET para a API do json-server
-        const response = await fetch(`${API_URL}/posts`);
+        // Atualiza a URL do fetch para usar a nova base e o caminho da API
+        const response = await fetch(`${API_BASE_URL}/api/posts`); // <-- MUDANÇA AQUI
 
-        // Verifica se a resposta da rede foi bem-sucedida (status 2xx)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const data: { id: number; title: string; excerpt: string; date: string; author: string; categories: string | string[] }[] = await response.json(); // Define a estrutura esperada
 
-        // Converte a resposta para JSON
-        const data: Post[] = await response.json();
+        // **IMPORTANTE: Parse do JSON de 'categories'**
+        // O MySQL retorna colunas JSON como strings. Precisamos converter de volta para array.
+        const parsedPosts = data.map(post => ({
+            ...post,
+            categories: (typeof post.categories === 'string') ? JSON.parse(post.categories) : post.categories ?? []
+            // Tenta fazer o parse se for string, senão usa o valor que veio ou um array vazio
+        }));
 
-        // Atualiza o estado com os posts recebidos
-        setPosts(data);
+        setPosts(parsedPosts as Post[]); // Define o estado com os posts parseados
 
       } catch (err) {
-        // Se ocorrer um erro na requisição ou processamento
         console.error('Erro ao buscar posts:', err);
         if (err instanceof Error) {
           setError(`Falha ao carregar posts: ${err.message}`);
         } else {
            setError('Falha ao carregar posts: Erro desconhecido.');
         }
-         setPosts([]); // Limpa posts antigos em caso de erro
+         setPosts([]);
       } finally {
-        // Garante que o loading seja desativado, ocorrendo erro ou não
         setLoading(false);
       }
     };
 
-    fetchPosts(); // Chama a função de busca ao montar o componente
-  }, []); // Array de dependências vazio, executa apenas uma vez
+    fetchPosts();
+  }, []);
 
-  // --- Renderização Condicional ---
-
+  // --- Renderização (sem alterações no JSX) ---
   if (loading) {
-    // Mantém o estado de loading como antes
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-center">
         <div className="animate-pulse text-xl text-gray-700">Carregando posts...</div>
@@ -65,7 +60,6 @@ const HomePage: FC = () => {
   }
 
   if (error) {
-    // Mostra uma mensagem de erro se a busca falhar
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-4 text-center">
         <p className="text-red-600 font-semibold">{error}</p>
@@ -88,7 +82,7 @@ const HomePage: FC = () => {
                  excerpt={post.excerpt}
                  date={post.date}
                  author={post.author}
-                 categories={post.categories}
+                 categories={post.categories} // Agora deve ser um array
                />
              ))}
            </div>
