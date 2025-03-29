@@ -2,7 +2,10 @@
 const express = require('express');
 const cors = require('cors'); // <-- Adicionar esta linha
 require('dotenv').config();
+const passport = require('passport');
+require('./config/passport-setup'); // <-- Executa o arquivo de configuração do Passport
 const postsRouter = require('./routes/posts'); // <-- Adicionar esta linha
+const authRouter = require('./routes/auth'); // <-- Adicionar esta linha
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -16,6 +19,7 @@ app.use(express.json());
 // (Opcional) Habilita o parsing de dados de formulários URL-encoded
 app.use(express.urlencoded({ extended: true }));
 
+app.use(passport.initialize()); // <-- Adicionar esta linha
 
 // --- ROTAS ---
 app.get('/', (req, res) => {
@@ -23,6 +27,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/posts', postsRouter); // <-- Adicionar esta linha
+app.use('/api/auth', authRouter);  // <-- Adicionar esta linha para Rotas de Auth
 
 // --- INICIAR SERVIDOR ---
 app.listen(PORT, () => {
