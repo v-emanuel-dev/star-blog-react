@@ -1,0 +1,84 @@
+# Arquivo gerado por https://gitignore.io/api/node,macos,windows,linux,react,vite,visualstudiocode
+# Adaptado para o projeto
+
+### Node ###
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cache de dependências e diretórios
+node_modules
+.npm
+.yarn-integrity
+.pnp
+.pnp.js
+.pnp.loader.mjs
+
+# Arquivos de ambiente (NUNCA comitar arquivos com senhas ou chaves!)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Excluir .envrc se estiver usando direnv
+.envrc
+
+# Saída de build e relatórios
+dist
+dist-ssr
+coverage
+.nyc_output
+
+# Arquivos de cache do Vite
+.vite/
+# build error file
+.vite-inspect/
+
+# Arquivos temporários do TypeScript
+*.tsbuildinfo
+
+### Sistema Operacional ###
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+
+# Linux
+*~
+
+### IDEs e Editores ###
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, etc.)
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Outros
+.cache
+.eslintcache
+
+# Arquivos específicos do projeto (se houver)
+# Ex: my-local-config.json

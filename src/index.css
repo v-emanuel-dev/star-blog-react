@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Exemplo de um body mais adequado para um app de página inteira */
+body {
+  min-height: 100vh;
+  /* Garante que o corpo tenha pelo menos a altura da tela */
+  /* Remova ou comente: display: flex; place-items: center; */
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif; /* Pode manter/ajustar a fonte */
+  line-height: 1.5; /* Pode manter/ajustar */
+}
