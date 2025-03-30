@@ -12,6 +12,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import RegisterPage from './pages/RegisterPage';
 import { BlogProvider } from './context/BlogContext';
 import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute'; // <-- Import
 
 const App: FC = () => {
   return (
@@ -27,9 +28,11 @@ const App: FC = () => {
                 <Route path="/post/:id" element={<PostPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/new-post" element={<NewPostPage />} />
-                <Route path="/edit-post/:id" element={<EditPostPage />} />
                 <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/new-post" element={<NewPostPage />} />
+                  <Route path="/edit-post/:id" element={<EditPostPage />} />
+                </Route>
                 <Route
                   path="*"
                   element={
