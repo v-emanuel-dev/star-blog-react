@@ -1,3 +1,4 @@
+// src/App.tsx
 import { FC } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
@@ -7,12 +8,13 @@ import PostPage from './pages/PostPage';
 import AboutPage from './pages/AboutPage';
 import NewPostPage from './pages/NewPostPage';
 import EditPostPage from './pages/EditPostPage';
-import LoginPage from './pages/LoginPage'; 
+import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage'; // Import ProfilePage
 import { BlogProvider } from './context/BlogContext';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute'; // <-- Import
+import ProtectedRoute from './components/ProtectedRoute';
 
 const App: FC = () => {
   return (
@@ -29,10 +31,13 @@ const App: FC = () => {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
                 <Route element={<ProtectedRoute />}>
                   <Route path="/new-post" element={<NewPostPage />} />
                   <Route path="/edit-post/:id" element={<EditPostPage />} />
+                  <Route path="/profile" element={<ProfilePage />} /> {/* Add Profile Route */}
                 </Route>
+
                 <Route
                   path="*"
                   element={

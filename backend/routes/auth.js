@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const passport = require('passport');
 const uploadAvatar = require('../middleware/uploadMiddleware');
+const { protect } = require('../middleware/authMiddleware'); // Ensure protect is imported
 
 const router = express.Router();
 const saltRounds = 10;
@@ -101,6 +102,38 @@ router.post('/register', uploadAvatar, async (req, res) => {
        // If an avatar was uploaded but DB insert failed, consider deleting the orphaned file
        // if (avatarFile) { require('fs').unlinkSync(avatarFile.path); } // Example cleanup
       res.status(500).json({ message: "Internal server error during registration.", error: error.message });
+  }
+});
+
+router.get('/me', protect, async (req, res) => {
+  // 'protect' middleware ran successfully and attached user info to req.user
+  // req.user contains the payload from the JWT (userId, email, name, avatarUrl)
+
+  // It's often good practice to re-fetch from DB to ensure data is current,
+  // especially if sensitive info isn't in the JWT.
+  // We'll fetch id, email, name, avatar_url, created_at.
+
+  if (!req.user || !req.user.id) {
+       // Should not happen if 'protect' middleware worked, but good check
+       return res.status(401).json({ message: 'Not authorized, user ID missing from token' });
+  }
+
+  try {
+      const userId = req.user.id;
+      const sql = "SELECT id, email, name, avatar_url, created_at FROM users WHERE id = ?";
+      const [users] = await pool.query(sql, [userId]);
+
+      if (users.length === 0) {
+          // User existed in token but not in DB? Very unlikely.
+          return res.status(404).json({ message: 'User not found in database' });
+      }
+
+      // Send back the user data (excluding password hash)
+      res.json(users[0]);
+
+  } catch (error) {
+      console.error('Error fetching user data for /me:', error);
+      res.status(500).json({ message: 'Error fetching user data', error: error.message });
   }
 });
 

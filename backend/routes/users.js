@@ -1,0 +1,113 @@
+// backend/routes/users.js (WITH DEBUG LOGGING)
+const express = require('express');
+const router = express.Router();
+const pool = require('../config/db');
+const fs = require('fs').promises;
+const path = require('path');
+const { protect } = require('../middleware/authMiddleware');
+const uploadAvatar = require('../middleware/uploadMiddleware');
+
+router.put('/profile', protect, uploadAvatar, async (req, res) => {
+    const userId = req.user.id;
+    console.log(`[PUT /profile] User ID: ${userId}`);
+
+    const { name } = req.body;
+    const newAvatarFile = req.file;
+    console.log(`[PUT /profile] Received name: ${name}`);
+    console.log(`[PUT /profile] Received file:`, newAvatarFile ? newAvatarFile.filename : 'No file');
+
+    const fieldsToUpdate = {};
+    const values = [];
+
+    if (name !== undefined) {
+        fieldsToUpdate.name = name;
+        values.push(fieldsToUpdate.name);
+        console.log(`[PUT /profile] Prepared 'name' for update.`);
+    }
+
+    let oldAvatarPath = null;
+    let newAvatarUrlPath = null;
+
+    try {
+        if (newAvatarFile) {
+            newAvatarUrlPath = `/uploads/avatars/${newAvatarFile.filename}`;
+            fieldsToUpdate.avatar_url = newAvatarUrlPath;
+            values.push(fieldsToUpdate.avatar_url);
+            console.log(`[PUT /profile] Prepared 'avatar_url' (${newAvatarUrlPath}) for update.`);
+
+            console.log(`[PUT /profile] Fetching old avatar path for user ${userId}...`);
+            const [currentUserData] = await pool.query("SELECT avatar_url FROM users WHERE id = ?", [userId]);
+            if (currentUserData.length > 0 && currentUserData[0].avatar_url) {
+                oldAvatarPath = currentUserData[0].avatar_url;
+                console.log(`[PUT /profile] Found old avatar path: ${oldAvatarPath}`);
+            } else {
+                 console.log(`[PUT /profile] No old avatar path found for user ${userId}.`);
+            }
+        }
+
+        if (values.length === 0) {
+            console.log(`[PUT /profile] No data provided for update.`);
+            return res.status(400).json({ message: "No update data provided." });
+        }
+
+        const setClauses = Object.keys(fieldsToUpdate).map(key => `${key} = ?`).join(', ');
+        const sql = `UPDATE users SET ${setClauses} WHERE id = ?`;
+        values.push(userId);
+
+        console.log(`[PUT /profile] Executing SQL: ${sql}`);
+        console.log(`[PUT /profile] With values:`, values);
+        const [results] = await pool.query(sql, values);
+        console.log(`[PUT /profile] DB Update results - Affected Rows: ${results.affectedRows}`);
+
+        if (results.affectedRows === 0) {
+             console.log(`[PUT /profile] User ${userId} not found for update.`);
+            return res.status(404).json({ message: "User not found for update." });
+        }
+
+        if (newAvatarUrlPath && oldAvatarPath && oldAvatarPath.startsWith('/uploads/')) {
+            const oldFilePath = path.join(__dirname, '..', oldAvatarPath);
+            console.log(`[PUT /profile] Attempting to delete old avatar: ${oldFilePath}`);
+            try {
+                await fs.unlink(oldFilePath);
+                console.log(`[PUT /profile] Successfully deleted old avatar: ${oldFilePath}`);
+            } catch (unlinkError) {
+                console.error(`[PUT /profile] Non-critical error deleting old avatar file: ${oldFilePath}`, unlinkError);
+                // Log error but don't fail the overall request
+            }
+        }
+
+        console.log(`[PUT /profile] Fetching updated user data for user ${userId}...`);
+        const [updatedUserResult] = await pool.query(
+            "SELECT id, email, name, avatar_url, created_at FROM users WHERE id = ?",
+             [userId]
+        );
+
+        if (updatedUserResult.length === 0) {
+            // This case is less likely if affectedRows was > 0, but check anyway
+             console.error(`[PUT /profile] CRITICAL: User ${userId} not found AFTER successful update.`);
+            return res.status(404).json({ message: "User disappeared after update." });
+        }
+
+        console.log(`[PUT /profile] Sending success response for user ${userId}.`);
+        res.status(200).json({
+            message: "Profile updated successfully!",
+            user: updatedUserResult[0]
+        });
+
+    } catch (error) {
+        console.error(`[PUT /profile] Error during profile update for user ID ${userId}:`, error);
+        if (newAvatarFile && error) {
+             const newFilePath = newAvatarFile.path; // multer saves full path here
+             console.log(`[PUT /profile] Error occurred, attempting to delete uploaded file: ${newFilePath}`);
+            try {
+                await fs.unlink(newFilePath);
+                console.log(`[PUT /profile] Deleted uploaded file due to error: ${newFilePath}`);
+            } catch (unlinkError) {
+                 console.error(`[PUT /profile] Error deleting newly uploaded file after main error: ${newFilePath}`, unlinkError);
+            }
+        }
+        res.status(500).json({ message: "Internal server error while updating profile.", error: error.message });
+    }
+});
+
+module.exports = router;

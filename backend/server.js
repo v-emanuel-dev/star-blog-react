@@ -7,6 +7,7 @@ const postsRouter = require('./routes/posts');
 const authRouter = require('./routes/auth');
 const session = require('express-session');
 const path = require('path');
+const usersRouter = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,11 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    // Use a different secret than JWT, keep it in .env ideally
     secret: process.env.SESSION_SECRET || 'fallback_session_secret',
-    resave: false, // Don't save session if unmodified
-    saveUninitialized: false, // Don't create session until something stored
-    // cookie: { secure: true } // In production, use secure cookies (HTTPS)
+    resave: false,
+    saveUninitialized: false,
   })
 );
 
@@ -37,6 +36,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/posts', postsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 
 // --- START SERVER ---
 app.listen(PORT, () => {
