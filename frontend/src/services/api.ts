@@ -1,12 +1,6 @@
-// src/services/api.ts
 import { Post, User } from '../types';
 
 const API_BASE_URL = 'http://localhost:4000/api';
-
-const artificialDelay = (ms: number): Promise<void> => {
-    console.log(`ARTIFICIAL DELAY (API): Waiting ${ms}ms...`);
-    return new Promise(resolve => setTimeout(resolve, ms));
-};
 
 type PostInputData = Omit<Post, 'id'>;
 type RegisterUserData = Pick<User, 'email' | 'name'> & { password: string };
@@ -19,8 +13,8 @@ export const getAllPosts = async (): Promise<Post[]> => {
    if (!response.ok) {
        throw new Error(`HTTP error! status: ${response.status}`);
    }
+   // Assuming backend GET /api/posts now returns categories correctly parsed
    const posts: Post[] = await response.json();
-   // await artificialDelay(2000); // Keep or remove delay
    return posts;
 }
 
@@ -31,8 +25,8 @@ export const getPostById = async (id: string): Promise<Post> => {
        if (response.status === 404) throw new Error('Post not found.');
        throw new Error(`HTTP error! status: ${response.status}`);
    }
+    // Assuming backend GET /api/posts/:id now returns categories correctly parsed
    const post: Post = await response.json();
-   // await artificialDelay(2000); // Keep or remove delay
    return post;
  };
 
@@ -70,6 +64,7 @@ export const updatePost = async (id: number | string, postData: PostInputData): 
   if (!response.ok) {
     throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
   }
+   // Assuming backend PUT /api/posts/:id returns categories correctly parsed
   return responseBody;
 };
 
@@ -113,69 +108,61 @@ export const loginUser = async (credentials: LoginCredentials): Promise<LoginRes
     if (!response.ok) {
         throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
     }
-    return responseBody;
+     // Map response from backend's snake_case before returning
+     const backendUser = responseBody.user;
+     const mappedUser: User = {
+         id: backendUser.id,
+         email: backendUser.email,
+         name: backendUser.name,
+         avatarUrl: backendUser.avatar_url || null, // Mapping
+         created_at: backendUser.created_at,
+         updated_at: backendUser.updated_at
+     };
+    return { ...responseBody, user: mappedUser }; // Return object with mapped user
 };
 
 export const getCurrentUser = async (): Promise<User> => {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-      throw new Error("No authentication token found.");
-  }
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${token}` }
-  });
-  const responseBody = await response.json().catch(() => null);
-  if (!response.ok) {
-      throw new Error(responseBody?.message || `HTTP error! status: ${response.status}`);
-  }
-  if (!responseBody) throw new Error("Received empty response from /auth/me");
+    const token = localStorage.getItem('authToken');
+    if (!token) throw new Error("No authentication token found.");
 
-  // Map snake_case from backend to camelCase for frontend User type
-  const user: User = {
-      id: responseBody.id,
-      email: responseBody.email,
-      name: responseBody.name,
-      avatarUrl: responseBody.avatar_url || null, // Mapping happening here
-      created_at: responseBody.created_at,
-      updated_at: responseBody.updated_at // Assuming backend sends these too
-  };
-  // Optional: Remove delay if testing is done
-  // await artificialDelay(2000);
-  return user; // Return the mapped User object
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const responseBody = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(responseBody?.message || `HTTP error! status: ${response.status}`);
+    if (!responseBody) throw new Error("Received empty response from /auth/me");
+
+    const user: User = {
+        id: responseBody.id,
+        email: responseBody.email,
+        name: responseBody.name,
+        avatarUrl: responseBody.avatar_url || null, // Mapping
+        created_at: responseBody.created_at,
+        updated_at: responseBody.updated_at
+    };
+    return user;
 };
 
 export const updateUserProfile = async (formData: FormData): Promise<{ user: User }> => {
-  try {
-    const response = await fetch('http://localhost:4000/api/profile', {
-      method: 'PUT',
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`
-      }
+    const token = localStorage.getItem('authToken');
+    if (!token) throw new Error("No authentication token found.");
+
+    const fetchUrl = `${API_BASE_URL}/users/profile`; // Correct URL
+    const response = await fetch(fetchUrl, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }, // Correct token key
+        body: formData
     });
+    const responseBody = await response.json().catch(async () => {
+        const textResponse = await response.text();
+        return { message: textResponse || "Non-JSON response from server." };
+    });
+    if (!response.ok) throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
 
-    const responseBody = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(responseBody?.message || 'Failed to update profile');
-    }
-
-    // Map the returned user object
     const backendUser = responseBody.user;
     const mappedUser: User = {
-      id: backendUser.id,
-      email: backendUser.email,
-      name: backendUser.name,
-      avatarUrl: backendUser.avatar_url || null, // Mapping
-      created_at: backendUser.created_at,
-      updated_at: backendUser.updated_at
+        id: backendUser.id, email: backendUser.email, name: backendUser.name, avatarUrl: backendUser.avatar_url || null, created_at: backendUser.created_at, updated_at: backendUser.updated_at
     };
-
     return { user: mappedUser };
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    throw error;
-  }
 };
-
