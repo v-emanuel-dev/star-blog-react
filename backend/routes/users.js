@@ -6,6 +6,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { protect } = require('../middleware/authMiddleware');
 const uploadAvatar = require('../middleware/uploadMiddleware');
+const bcrypt = require('bcrypt');
 
 router.put('/profile', protect, uploadAvatar, async (req, res) => {
     const userId = req.user.id;
@@ -107,6 +108,63 @@ router.put('/profile', protect, uploadAvatar, async (req, res) => {
             }
         }
         res.status(500).json({ message: "Internal server error while updating profile.", error: error.message });
+    }
+});
+
+router.put('/password', protect, async (req, res) => {
+    const userId = req.user.id; // From protect middleware
+
+    // 1. Get passwords from request body
+    const { currentPassword, newPassword } = req.body;
+
+    // 2. Validation
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current password and new password are required.' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters long.' });
+    }
+    if (currentPassword === newPassword) {
+         return res.status(400).json({ message: 'New password cannot be the same as the current password.' });
+    }
+
+    try {
+        // 3. Fetch current password hash from DB
+        const sqlSelect = "SELECT password_hash FROM users WHERE id = ?";
+        const [users] = await pool.query(sqlSelect, [userId]);
+
+        if (users.length === 0) {
+             // Should not happen if 'protect' worked
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        const storedHash = users[0].password_hash;
+
+        // Check if user might have registered via Google (no password hash initially)
+         if (!storedHash) {
+             return res.status(400).json({ message: 'Cannot change password for accounts registered via social login without a password set.' });
+         }
+
+
+        // 4. Verify current password
+        const passwordMatch = await bcrypt.compare(currentPassword, storedHash);
+        if (!passwordMatch) {
+            return res.status(401).json({ message: 'Incorrect current password.' });
+        }
+
+        // 5. Hash the new password
+        const saltRounds = 10; // Same as used in registration
+        const newHashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // 6. Update the password hash in the database
+        const sqlUpdate = "UPDATE users SET password_hash = ? WHERE id = ?";
+        await pool.query(sqlUpdate, [newHashedPassword, userId]);
+
+        // 7. Send success response
+        res.status(200).json({ message: 'Password updated successfully!' });
+
+    } catch (error) {
+        console.error(`Error changing password for user ID ${userId}:`, error);
+        res.status(500).json({ message: 'Internal server error while changing password.', error: error.message });
     }
 });
 

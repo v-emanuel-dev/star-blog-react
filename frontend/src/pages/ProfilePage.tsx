@@ -1,7 +1,7 @@
-// src/pages/ProfilePage.tsx (Corrected & Cleaned)
 import React, { FC, useState, useEffect, ChangeEvent, FormEvent, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getCurrentUser, updateUserProfile } from '../services/api';
+// Import new API function
+import { getCurrentUser, updateUserProfile, changePassword } from '../services/api';
 import { User } from '../types';
 import Spinner from '../components/Spinner';
 import Alert from '../components/Alert';
@@ -15,14 +15,26 @@ const BACKEND_URL = 'http://localhost:4000';
 
 const ProfilePage: FC = () => {
     const { token, login } = useAuth();
+
+    // Profile data state
     const [profileData, setProfileData] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null); // General/fetch/update error
+
+    // Profile update form state
     const [nameInput, setNameInput] = useState('');
     const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    // Password change form state
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
     const getAvatarSrc = useCallback((avatarPath: string | null | undefined): string | null => {
          if (!avatarPath) return null;
@@ -31,27 +43,16 @@ const ProfilePage: FC = () => {
     }, []);
 
     const fetchProfile = useCallback(async () => {
-        if (!token) {
-            setError("Authentication required."); setIsLoading(false); return;
-        }
-        setIsLoading(true); setError(null);
+        if (!token) { setError("Authentication required."); setIsLoading(false); return; }
+        setIsLoading(true); setError(null); // Clear general error on fetch
         try {
-            const data = await getCurrentUser(); // Now returns User with avatarUrl (camelCase)
+            const data = await getCurrentUser();
             setProfileData(data);
             setNameInput(data.name || '');
-            // Use camelCase consistently now
             setAvatarPreview(getAvatarSrc(data.avatarUrl));
-
-            // Construct context user data using camelCase
-            const userForContext = {
-                id: data.id,
-                email: data.email,
-                name: data.name || null,
-                avatarUrl: data.avatarUrl || null // Access camelCase property
-            };
-            // This login call should now receive the correct avatarUrl
+            // Context update to ensure consistency after fetch
+            const userForContext = { id: data.id, email: data.email, name: data.name || null, avatarUrl: data.avatarUrl || null };
             login(userForContext, token);
-
         } catch (err) {
             setError(err instanceof Error ? `Failed to load profile: ${err.message}` : "An unknown error occurred.");
             setProfileData(null);
@@ -75,49 +76,69 @@ const ProfilePage: FC = () => {
             reader.readAsDataURL(file);
         } else {
             setNewAvatarFile(null);
-            // Use camelCase here too
             setAvatarPreview(getAvatarSrc(profileData?.avatarUrl));
         }
     };
 
     const handleProfileUpdate = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError(null); setSuccessMessage(null);
+        setError(null); setSuccessMessage(null); setPasswordError(null); setPasswordSuccess(null); // Clear all messages
         const nameChanged = nameInput !== (profileData?.name || '');
         const avatarChanged = newAvatarFile !== null;
-
-        if (!nameChanged && !avatarChanged) { setError("No changes detected."); return; }
-
+        if (!nameChanged && !avatarChanged) { setError("No changes detected to save."); return; }
         setIsSaving(true);
         const formData = new FormData();
         if (nameChanged) formData.append('name', nameInput);
         if (avatarChanged && newAvatarFile) formData.append('avatarImage', newAvatarFile);
-
         try {
             await updateUserProfile(formData);
-            await fetchProfile(); // Refetch updates profileData, avatarPreview and context
+            await fetchProfile(); // Refetch includes context update
             setSuccessMessage("Profile updated successfully!");
             setNewAvatarFile(null);
+        } catch (err) { setError(err instanceof Error ? `Failed to update profile: ${err.message}` : "An unknown error occurred."); }
+        finally { setIsSaving(false); }
+    };
+
+    // Handler for password change form
+    const handleChangePassword = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setPasswordError(null); setPasswordSuccess(null); setError(null); setSuccessMessage(null); // Clear all messages
+
+        if (newPassword !== confirmNewPassword) { setPasswordError("New passwords do not match."); return; }
+        if (newPassword.length < 6) { setPasswordError("New password must be at least 6 characters long."); return; }
+        if (!currentPassword) { setPasswordError("Current password is required."); return; }
+        if (currentPassword === newPassword) { setPasswordError("New password cannot be the same as the current password."); return; }
+
+
+        setIsChangingPassword(true);
+        try {
+            const result = await changePassword({ currentPassword, newPassword });
+            setPasswordSuccess(result.message || "Password changed successfully!");
+            // Clear password fields after success
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+            // Optionally: Force re-login by calling logout() here, but maybe not necessary
+            // logout(); navigate('/login?message=Password changed, please log in again');
+
         } catch (err) {
-            setError(err instanceof Error ? `Failed to update profile: ${err.message}` : "An unknown error occurred.");
+             setPasswordError(err instanceof Error ? err.message : "An unknown error occurred while changing password.");
         } finally {
-            setIsSaving(false);
+            setIsChangingPassword(false);
         }
     };
+
 
     if (isLoading && !profileData) {
         return <div className="flex justify-center items-center py-10"><Spinner size="lg" /></div>;
     }
-
-    if (error && !profileData && !isSaving) {
-         return ( <div className="px-4 sm:px-6 lg:px-8 py-4 text-center"> <Alert message={error} type="error" title="Error Loading Profile!" onClose={() => setError(null)} /><Link to="/" className="text-blue-500 hover:underline mt-4 inline-block">Back to homepage</Link></div>);
+    if (error && !profileData && !isSaving && !isChangingPassword) {
+         return ( <div className="px-4 sm:px-6 lg:px-8 py-4 text-center"><Alert message={error} type="error" title="Error Loading Profile!" onClose={() => setError(null)} /><Link to="/" className="text-blue-500 hover:underline mt-4 inline-block">Back to homepage</Link></div>);
     }
-
     if (!profileData) {
         return <div className="px-4 sm:px-6 lg:px-8 py-4 text-center">Could not load profile data.</div>;
     }
 
-    // Use avatarPreview for display logic
     const currentAvatarDisplay = avatarPreview;
 
     return (
@@ -125,9 +146,11 @@ const ProfilePage: FC = () => {
             <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
                 <h1 className="text-2xl font-bold mb-4 text-gray-900">Your Profile</h1>
 
-                {error && !isLoading && (<Alert message={error} type="error" title="Update Error!" onClose={() => setError(null)} />)}
-                {successMessage && (<Alert message={successMessage} type="success" title="Success!" onClose={() => setSuccessMessage(null)} />)}
+                {/* General/Update Errors/Success */}
+                {error && <Alert message={error} type="error" title="Update Error!" onClose={() => setError(null)} />}
+                {successMessage && <Alert message={successMessage} type="success" title="Success!" onClose={() => setSuccessMessage(null)} />}
 
+                {/* --- Profile Update Form --- */}
                 <form onSubmit={handleProfileUpdate} className="space-y-6 mt-4">
                     <div className="flex items-center space-x-4">
                          <div className="flex-shrink-0">
@@ -150,16 +173,43 @@ const ProfilePage: FC = () => {
                     </div>
                      <div>
                          <button type="submit" disabled={isSaving || (!newAvatarFile && nameInput === (profileData?.name || ''))} className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed`}>
-                            {isSaving ? (<><Spinner size="sm" color="text-white" className="mr-2"/>Saving...</>) : 'Save Changes'}
+                            {isSaving ? (<><Spinner size="sm" color="text-white" className="mr-2"/>Saving Profile...</>) : 'Save Profile Changes'}
                          </button>
                      </div>
                 </form>
-                 <div className="mt-6 border-t pt-6">
+
+                {/* --- Change Password Form --- */}
+                 <div className="mt-8 border-t pt-6">
                       <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Change Password</h3>
-                      <p className="text-sm text-gray-500">(Password change form coming soon...)</p>
+
+                        {/* Display Password Change Errors/Success */}
+                        {passwordError && <Alert message={passwordError} type="error" title="Password Error!" onClose={() => setPasswordError(null)} />}
+                        {passwordSuccess && <Alert message={passwordSuccess} type="success" title="Success!" onClose={() => setPasswordSuccess(null)} />}
+
+                      <form onSubmit={handleChangePassword} className="space-y-4 mt-4">
+                          <div>
+                              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">Current Password:</label>
+                              <input type="password" id="currentPassword" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} disabled={isChangingPassword} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                          </div>
+                           <div>
+                              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">New Password:</label>
+                              <input type="password" id="newPassword" required minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={isChangingPassword} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                          </div>
+                           <div>
+                              <label htmlFor="confirmNewPassword" className="block text-sm font-medium text-gray-700">Confirm New Password:</label>
+                              <input type="password" id="confirmNewPassword" required minLength={6} value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} disabled={isChangingPassword} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                          </div>
+                          <div>
+                               <button type="submit" disabled={isChangingPassword} className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                  {isChangingPassword ? (<><Spinner size="sm" color="text-white" className="mr-2"/>Changing...</>) : 'Change Password'}
+                               </button>
+                          </div>
+                      </form>
                  </div>
+
             </div>
         </div>
     );
 };
+
 export default ProfilePage;

@@ -6,6 +6,7 @@ type PostInputData = Omit<Post, 'id'>;
 type RegisterUserData = Pick<User, 'email' | 'name'> & { password: string };
 type LoginCredentials = Pick<User, 'email'> & { password: string };
 type LoginResponse = { message: string; token: string; user: User };
+type ChangePasswordData = { currentPassword: string; newPassword: string };
 
 
 export const getAllPosts = async (): Promise<Post[]> => {
@@ -165,4 +166,30 @@ export const updateUserProfile = async (formData: FormData): Promise<{ user: Use
         id: backendUser.id, email: backendUser.email, name: backendUser.name, avatarUrl: backendUser.avatar_url || null, created_at: backendUser.created_at, updated_at: backendUser.updated_at
     };
     return { user: mappedUser };
+};
+
+export const changePassword = async (passwords: ChangePasswordData): Promise<{ message: string }> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("No authentication token found.");
+
+  const response = await fetch(`${API_BASE_URL}/users/password`, {
+      method: 'PUT',
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(passwords) // Send current and new password
+  });
+
+  const responseBody = await response.json().catch(async () => {
+      const textResponse = await response.text();
+      return { message: textResponse || "Non-JSON response from server." };
+  });
+
+  if (!response.ok) {
+      // Backend sends specific messages for errors (e.g., 'Incorrect current password.')
+      throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
+  }
+  // Expects { message: string } from backend on success
+  return responseBody;
 };
