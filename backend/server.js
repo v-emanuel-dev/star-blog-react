@@ -1,35 +1,29 @@
-// backend/server.js
 const express = require('express');
-const cors = require('cors'); // <-- Adicionar esta linha
+const cors = require('cors');
 require('dotenv').config();
 const passport = require('passport');
-require('./config/passport-setup'); // <-- Executa o arquivo de configuração do Passport
-const postsRouter = require('./routes/posts'); // <-- Adicionar esta linha
-const authRouter = require('./routes/auth'); // <-- Adicionar esta linha
+require('./config/passport-setup');
+const postsRouter = require('./routes/posts');
+const authRouter = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // --- MIDDLEWARE ---
-// Habilita o CORS para todas as origens (bom para desenvolvimento)
-app.use(cors()); // <-- Adicionar esta linha ANTES das definições de rota
-
-// (Opcional) Habilita o parsing de JSON no corpo das requisições (útil para POST/PUT)
+app.use(cors());
 app.use(express.json());
-// (Opcional) Habilita o parsing de dados de formulários URL-encoded
 app.use(express.urlencoded({ extended: true }));
+app.use(passport.initialize());
 
-app.use(passport.initialize()); // <-- Adicionar esta linha
-
-// --- ROTAS ---
+// --- ROUTES ---
 app.get('/', (req, res) => {
-  res.json({ message: 'Olá do Backend Star Blog!' });
+  res.json({ message: 'Hello from Star Blog Backend!' });
 });
 
-app.use('/api/posts', postsRouter); // <-- Adicionar esta linha
-app.use('/api/auth', authRouter);  // <-- Adicionar esta linha para Rotas de Auth
+app.use('/api/posts', postsRouter);
+app.use('/api/auth', authRouter);
 
-// --- INICIAR SERVIDOR ---
+// --- START SERVER ---
 app.listen(PORT, () => {
-  console.log(`Servidor backend rodando na porta ${PORT}`);
+  console.log(`Backend server running on port ${PORT}`);
 });

@@ -1,12 +1,7 @@
-import React, { FC, useState, useEffect } from 'react'; // Import React
-// Importar hooks e Link do react-router-dom
+import React, { FC, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Post } from '../types';
-// Importar funções da API, incluindo deletePost
 import { getPostById, deletePost } from '../services/api';
-
-// Mantém a URL base (embora não seja usada diretamente aqui, é usada em api.ts)
-// const API_BASE_URL = 'http://localhost:4000';
 
 interface PostParams {
   id: string;
@@ -15,16 +10,15 @@ interface PostParams {
 
 const PostPage: FC = () => {
   const { id } = useParams<PostParams>();
-  const navigate = useNavigate(); // Hook para navegação programática
+  const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState<boolean>(true); // Loading da busca inicial
-  const [isDeleting, setIsDeleting] = useState<boolean>(false); // Estado para loading do delete
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // useEffect para buscar o post (sem alterações)
   useEffect(() => {
     if (!id) {
-      setError("ID do post inválido.");
+      setError("Invalid post ID.");
       setLoading(false);
       return;
     }
@@ -32,14 +26,14 @@ const PostPage: FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const fetchedPost: Post = await getPostById(id); // Usa a função da API
+        const fetchedPost: Post = await getPostById(id);
         setPost(fetchedPost);
       } catch (err) {
-        console.error(`Erro ao buscar post ${id}:`, err);
+        console.error(`Error fetching post ${id}:`, err);
         if (err instanceof Error) {
-          setError(`Falha ao carregar o post: ${err.message}`);
+          setError(`Failed to load post: ${err.message}`);
         } else {
-          setError('Falha ao carregar o post: Erro desconhecido.');
+          setError('Failed to load post: Unknown error.');
         }
         setPost(null);
       } finally {
@@ -49,100 +43,85 @@ const PostPage: FC = () => {
     fetchPost();
   }, [id]);
 
-
-  // --- FUNÇÃO PARA DELETAR ---
   const handleDelete = async () => {
     if (!id || !post) {
-        console.error("Tentativa de deletar sem ID ou post carregado.");
+        console.error("Attempt to delete without ID or post loaded.");
         return;
     }
 
-    const confirmDelete = window.confirm(`Tem certeza que deseja deletar o post "${post.title}"? Esta ação não pode ser desfeita.`);
+    const confirmDelete = window.confirm(`Are you sure you want to delete the post "${post.title}"? This action cannot be undone.`);
 
     if (confirmDelete) {
-      setIsDeleting(true); // Inicia o estado de "deletando"
+      setIsDeleting(true);
       setError(null);
       try {
-        await deletePost(id); // Chama a função da API para deletar
-        console.log(`Post ${id} deletado com sucesso.`);
-        navigate('/'); // Redireciona para a página inicial após deletar
+        await deletePost(id);
+        console.log(`Post ${id} deleted successfully.`);
+        navigate('/');
       } catch (err) {
-        console.error("Erro ao deletar post:", err);
+        console.error("Error deleting post:", err);
         if (err instanceof Error) {
-          setError(`Erro ao deletar: ${err.message}`); // Mostra erro na página
+          setError(`Error deleting: ${err.message}`);
         } else {
-          setError("Ocorreu um erro desconhecido ao deletar.");
+          setError("An unknown error occurred while deleting.");
         }
-        setIsDeleting(false); // Reabilita o botão se deu erro
+        setIsDeleting(false);
       }
-      // Não precisa de finally aqui, pois ou navegamos ou já tratamos o erro
     }
   };
-
-
-  // --- RENDERIZAÇÃO CONDICIONAL ---
 
   if (loading) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-center">
-        <div className="animate-pulse text-xl text-gray-700">Carregando post...</div>
+        <div className="animate-pulse text-xl text-gray-700">Loading post...</div>
       </div>
     );
   }
 
-  // Mostra erro (seja de carregamento ou de delete)
   if (error) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-4 text-center">
         <p className="text-red-600 font-semibold">{error}</p>
-        {/* Mostra link para voltar apenas se não for um erro 404 inicial */}
-        {(post || !error.includes('Post não encontrado')) && (
+        {(post || !error.includes('Post not found')) && (
             <Link to="/" className="text-blue-500 hover:underline mt-4 inline-block">
-             Voltar para a página inicial
+             Back to homepage
             </Link>
         )}
       </div>
     );
   }
 
-  // Se !post e não há erro/loading (não deveria acontecer, mas por segurança)
   if (!post) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-4">
-        <h1 className="text-2xl font-bold mb-4 text-gray-900">Post não encontrado</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">Post not found</h1>
         <Link to="/" className="text-blue-500 hover:underline">
-          Voltar para a página inicial
+          Back to homepage
         </Link>
       </div>
     );
   }
 
-  // --- RENDERIZAÇÃO PRINCIPAL DO POST ---
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4">
-      {/* Adicionado 'pb-10' para dar espaço extra embaixo caso os botões fiquem sobrepostos */}
       <article className="bg-white rounded-lg shadow-md p-6 relative pb-10">
-
-        {/* Botões Editar e Deletar */}
-        <div className="absolute top-4 right-4 flex space-x-2 z-10"> {/* z-10 pode ajudar com sobreposição */}
+        <div className="absolute top-4 right-4 flex space-x-2 z-10">
           <Link
             to={`/edit-post/${post.id}`}
             className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-semibold py-1 px-3 rounded transition duration-150 ease-in-out"
           >
-            Editar
+            Edit
           </Link>
-          {/* Botão Deletar Adicionado */}
           <button
             onClick={handleDelete}
             disabled={isDeleting}
             className={`bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-3 rounded transition duration-150 ease-in-out ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {isDeleting ? 'Deletando...' : 'Deletar'}
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
 
-
-        <h1 className="text-3xl font-bold mb-4 text-gray-900 pr-24">{post.title}</h1> {/* Adicionado pr para evitar sobrepor botões */}
+        <h1 className="text-3xl font-bold mb-4 text-gray-900 pr-24">{post.title}</h1>
 
         {post.categories && post.categories.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1">
@@ -155,7 +134,7 @@ const PostPage: FC = () => {
         )}
 
         <div className="text-gray-500 mb-6">
-          <span>{post.date}</span> • <span>Por: {post.author}</span>
+          <span>{post.date}</span> • <span>By: {post.author}</span>
         </div>
 
         <div className="prose max-w-none mb-6">
@@ -165,15 +144,14 @@ const PostPage: FC = () => {
           {post.content ? (
             <p className="text-gray-700">{post.content}</p>
           ) : (
-             <p className="text-gray-500 italic">(Conteúdo completo não disponível)</p>
+             <p className="text-gray-500 italic">(Full content not available)</p>
           )}
         </div>
 
         <div className="mt-8 pt-4 border-t flex justify-between items-center">
           <Link to="/" className="text-blue-500 hover:underline">
-            ← Voltar para a lista de posts
+            ← Back to posts list
           </Link>
-           {/* Poderia adicionar os botões aqui embaixo também, se preferir */}
         </div>
       </article>
     </div>

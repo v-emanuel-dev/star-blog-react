@@ -58,14 +58,14 @@ const PostCard: FC<PostCardProps> = ({
       
       <div className="flex justify-between text-sm text-gray-500">
         <span>{date}</span>
-        <span>Por: {author}</span>
+        <span>By: {author}</span>
       </div>
       <div className="mt-4 border-t pt-3 flex items-center justify-between">
         <button 
           onClick={handleLike}
           className="flex items-center text-blue-500 hover:text-blue-700"
         >
-          <span className="mr-1">👍</span> Curtir ({likes})
+          <span className="mr-1">👍</span> Like ({likes})
         </button>
         
         <button
@@ -75,7 +75,7 @@ const PostCard: FC<PostCardProps> = ({
           } hover:text-yellow-500`}
         >
           <span className="mr-1">⭐</span> 
-          {isFavorite(id) ? 'Favorito' : 'Favoritar'}
+          {isFavorite(id) ? 'Favorite' : 'Favorites'}
         </button>
       </div>
     </div>

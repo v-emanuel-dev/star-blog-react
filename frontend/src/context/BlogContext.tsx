@@ -1,6 +1,5 @@
-import { createContext, useContext, FC, ReactNode, useState } from 'react';
+import { createContext, useContext, FC, ReactNode, useState, useEffect } from 'react';
 
-// Definindo a estrutura do nosso contexto
 interface BlogContextType {
   favorites: number[];
   addToFavorites: (postId: number) => void;
@@ -8,17 +7,21 @@ interface BlogContextType {
   isFavorite: (postId: number) => boolean;
 }
 
-// Criando o contexto com um valor padrão
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
 
-// Props para o provider
 interface BlogProviderProps {
   children: ReactNode;
 }
 
-// Provider component
 export const BlogProvider: FC<BlogProviderProps> = ({ children }) => {
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState<number[]>(() => {
+    const storedFavorites = localStorage.getItem('favorites');
+    return storedFavorites ? JSON.parse(storedFavorites) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+  }, [favorites]);
 
   const addToFavorites = (postId: number): void => {
     if (!favorites.includes(postId)) {
@@ -34,7 +37,6 @@ export const BlogProvider: FC<BlogProviderProps> = ({ children }) => {
     return favorites.includes(postId);
   };
 
-  // Valor que será disponibilizado para os componentes filhos
   const value: BlogContextType = {
     favorites,
     addToFavorites,
@@ -45,11 +47,10 @@ export const BlogProvider: FC<BlogProviderProps> = ({ children }) => {
   return <BlogContext.Provider value={value}>{children}</BlogContext.Provider>;
 };
 
-// Hook personalizado para usar o contexto
 export const useBlog = (): BlogContextType => {
   const context = useContext(BlogContext);
   if (context === undefined) {
-    throw new Error('useBlog deve ser usado dentro de um BlogProvider');
+    throw new Error('useBlog must be used within a BlogProvider');
   }
   return context;
 };

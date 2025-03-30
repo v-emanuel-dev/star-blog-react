@@ -1,10 +1,19 @@
-// src/types/index.ts
 export interface Post {
+  id: number;
+  title: string;
+  excerpt: string;
+  content?: string;
+  date: string;
+  author: string;
+  categories?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface User {
     id: number;
-    title: string;
-    excerpt: string;
-    content?: string;
-    date: string;
-    author: string;
-    categories?: string[];
-  }
+    email: string;
+    name: string | null;
+    created_at?: string;
+    updated_at?: string;
+}

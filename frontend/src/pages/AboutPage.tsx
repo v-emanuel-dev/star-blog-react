@@ -1,35 +1,24 @@
-// src/pages/AboutPage.tsx
 import { FC } from 'react';
 
 const AboutPage: FC = () => {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4">
       <div className="bg-white rounded-lg shadow-md p-6">
-        {/* Adicionada cor escura */}
-        <h1 className="text-3xl font-bold mb-6 text-gray-900">Sobre o Blog</h1>
+        <h1 className="text-3xl font-bold mb-6 text-gray-900">About the Blog</h1>
 
         <section className="mb-8">
-          {/* Adicionada cor escura */}
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800">Nossa Missão</h2>
-          {/* Adicionada cor escura */}
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800">Our Mission</h2>
           <p className="mb-4 text-gray-700">
-            Bem-vindo ao <strong>Star Blog</strong>! Nossa missão é compartilhar
-            conhecimento sobre desenvolvimento web moderno, com foco em React, TypeScript,
-            e as melhores práticas de frontend.
+            Welcome to <strong>Star Blog</strong>! Our mission is to share knowledge about modern web development, focusing on React, TypeScript, and best frontend practices.
           </p>
-          {/* Adicionada cor escura */}
           <p className="text-gray-700">
-            Acreditamos que o código com tipagem forte não apenas previne erros, mas também
-            melhora a documentação e a colaboração entre desenvolvedores.
+            We believe that strongly typed code not only prevents errors but also improves documentation and collaboration among developers.
           </p>
         </section>
 
         <section className="mb-8">
-           {/* Adicionada cor escura */}
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800">Tecnologias</h2>
-           {/* Adicionada cor escura */}
-          <p className="mb-4 text-gray-700">Este blog foi construído usando:</p>
-           {/* Adicionada cor escura aos itens da lista */}
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800">Technologies</h2>
+          <p className="mb-4 text-gray-700">This blog was built using:</p>
           <ul className="list-disc pl-6 space-y-2 text-gray-700">
             <li>React 18</li>
             <li>TypeScript 5</li>

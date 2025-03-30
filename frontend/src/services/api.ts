@@ -1,19 +1,41 @@
-import { Post } from '../types'; // Importa nosso tipo Post
+import { Post, User } from '../types';
 
-// Define a URL base do nosso backend Node.js
-const API_BASE_URL = 'http://localhost:4000/api'; // Verifique a porta
+const API_BASE_URL = 'http://localhost:4000/api';
 
-// Tipo para os dados que enviaremos para criar/atualizar (sem o ID)
 type PostInputData = Omit<Post, 'id'>;
+type RegisterUserData = Pick<User, 'email' | 'name'> & { password: string };
+type LoginCredentials = Pick<User, 'email'> & { password: string };
+type LoginResponse = { message: string; token: string; user: Pick<User, 'id' | 'email' | 'name'> };
 
-// Função para CRIAR um novo post (POST)
+export const getAllPosts = async (): Promise<Post[]> => {
+   const response = await fetch(`${API_BASE_URL}/posts`);
+   if (!response.ok) {
+       throw new Error(`HTTP error! status: ${response.status}`);
+   }
+   const posts: Post[] = await response.json();
+   return posts;
+};
+
+export const getPostById = async (id: string): Promise<Post> => {
+   const fetchUrl = `${API_BASE_URL}/posts/${id}`;
+   console.log("Fetching post from:", fetchUrl);
+
+   const response = await fetch(fetchUrl);
+
+   if (!response.ok) {
+       if (response.status === 404) throw new Error('Post not found.');
+       throw new Error(`HTTP error! status: ${response.status}`);
+   }
+   const post: Post = await response.json();
+   return post;
+ };
+
 export const createPost = async (postData: PostInputData): Promise<{ insertedId: number }> => {
   const dataToSend = {
     ...postData,
     categories: postData.categories || [],
   };
 
-  // URL construída corretamente (pode ser aspas ou crases aqui pois não há variável)
   const response = await fetch(`${API_BASE_URL}/posts`, {
     method: 'POST',
     headers: {
@@ -22,25 +44,23 @@ export const createPost = async (postData: PostInputData): Promise<{ insertedId:
     body: JSON.stringify(dataToSend),
   });
 
+  const responseBody = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
   }
-  return await response.json();
+  return responseBody;
 };
 
-// Função para ATUALIZAR um post existente (PUT)
 export const updatePost = async (id: number | string, postData: PostInputData): Promise<{ post: Post }> => {
   const dataToSend = {
       ...postData,
       categories: postData.categories || [],
   };
 
-  // CORRIGIDO: URL construída com CRASES (`) e ${}
   const fetchUrl = `${API_BASE_URL}/posts/${id}`;
-  console.log("Updating post at:", fetchUrl); // Log para verificar
+  console.log("Updating post at:", fetchUrl);
 
-  const response = await fetch(fetchUrl, { // Usa a variável fetchUrl
+  const response = await fetch(fetchUrl, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -48,62 +68,55 @@ export const updatePost = async (id: number | string, postData: PostInputData): 
     body: JSON.stringify(dataToSend),
   });
 
+  const responseBody = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
   }
-  return await response.json();
+  return responseBody;
 };
 
-// Função para BUSCAR TODOS os posts (GET)
-export const getAllPosts = async (): Promise<Post[]> => {
-   // URL construída corretamente (pode ser aspas ou crases aqui)
-   const response = await fetch(`${API_BASE_URL}/posts`);
-   if (!response.ok) {
-       throw new Error(`HTTP error! status: ${response.status}`);
-   }
-   const posts: Post[] = await response.json();
-   // Backend já retorna 'categories' como array
-   return posts;
-}
-
-// Função para BUSCAR UM post por ID (GET)
- export const getPostById = async (id: string): Promise<Post> => {
-   // CORRIGIDO: URL construída com CRASES (`) e ${}
-   const fetchUrl = `${API_BASE_URL}/posts/${id}`;
-   console.log("Fetching post from:", fetchUrl); // Log corrigido
-
-   const response = await fetch(fetchUrl); // Usa a variável fetchUrl
-
-   if (!response.ok) {
-       if (response.status === 404) throw new Error('Post não encontrado.');
-       throw new Error(`HTTP error! status: ${response.status}`);
-   }
-   const post: Post = await response.json();
-    // Backend já retorna 'categories' como array
-   return post;
- };
-
-// Função para DELETAR um post (DELETE)
 export const deletePost = async (id: number | string): Promise<{ message: string }> => {
   const fetchUrl = `${API_BASE_URL}/posts/${id}`;
-    console.log("Deleting post at:", fetchUrl);
-  
-    const response = await fetch(fetchUrl, {
-      method: 'DELETE', // Método HTTP DELETE
+  console.log("Trying to delete at:", fetchUrl);
+
+  const response = await fetch(fetchUrl, {
+    method: 'DELETE',
+  });
+
+  const responseBody = await response.json().catch(() => null);
+
+  if (!response.ok) {
+      const errorMessage = responseBody?.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+  }
+
+  return responseBody || { message: "Post deleted successfully!" };
+};
+
+export const registerUser = async (userData: RegisterUserData): Promise<{ userId: number }> => {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
     });
-  
+
+    const responseBody = await response.json().catch(() => ({}));
     if (!response.ok) {
-      // Se não for OK (ex: 404 Not Found se o post já foi deletado)
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
     }
-  
-    // Se for 204 No Content (comum para DELETE), pode não ter corpo JSON
-    if (response.status === 204) {
-        return { message: "Post deletado com sucesso!" }; // Retorna uma mensagem padrão
+    return responseBody;
+};
+
+export const loginUser = async (credentials: LoginCredentials): Promise<LoginResponse> => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+    });
+
+    const responseBody = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
     }
-  
-    // Se for 200 OK (como configuramos no backend), esperamos um JSON
-    return await response.json(); // Retorna a mensagem do backend { message: "..." }
-  };
+    return responseBody;
+};

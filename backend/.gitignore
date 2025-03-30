@@ -1,14 +1,9 @@
-# backend/.gitignore
-
-# Dependências
 node_modules/
 
-# Variáveis de Ambiente
 .env
 .env.*
 !.env.example # Se você criar um exemplo, não ignore ele
 
-# Logs
 logs
 *.log
 npm-debug.log*
@@ -17,7 +12,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Arquivos de OS/IDE (Opcional)
 .DS_Store
 Thumbs.db
 *~
