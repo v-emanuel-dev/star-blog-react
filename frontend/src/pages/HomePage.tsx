@@ -71,6 +71,7 @@ const HomePage: FC = () => {
                             date={post.date}
                             author={post.author}
                             categories={post.categories}
+                            likes={post.likes}
                         />
                     ))}
                 </div>

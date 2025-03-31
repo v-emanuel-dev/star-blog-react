@@ -10,7 +10,7 @@ type LoginResponse = { message: string; token: string; user: User };
 type ChangePasswordData = { currentPassword: string; newPassword: string };
 type AddCommentData = { content: string };
 type EditCommentData = { content: string }; // Type for editing
-
+type LikeToggleResponse = { message: string; liked: boolean; likes: number; };
 // Backend Comment response interface (for mapping)
 interface BackendComment {
   id: number;
@@ -21,6 +21,21 @@ interface BackendComment {
     name: string;
     avatarUrl?: string | null;
   };
+}
+
+// Helper to safely parse JSON or return null
+async function safeResponseJson(response: Response): Promise<any> {
+  try {
+      return await response.json();
+  } catch (e) {
+      console.error("Response body was not valid JSON:", e);
+      return null;
+  }
+}
+
+// Helper to create error message
+function createErrorMessage(parsedBody: any, response: Response): string {
+   return parsedBody?.message || response.statusText || `HTTP error! status: ${response.status}`;
 }
 
 export const getAllPosts = async (): Promise<Post[]> => {
@@ -281,3 +296,33 @@ export const deleteComment = async (commentId: number): Promise<{ message: strin
   }
   return responseBody || { message: "Comment deleted successfully!" };
 };
+
+export const toggleLikePost = async (postId: number | string): Promise<LikeToggleResponse> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("Authentication required to like/unlike posts.");
+
+  const fetchUrl = `${API_BASE_URL}/posts/${postId}/like`;
+  const response = await fetch(fetchUrl, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  // Try to parse JSON body, store result or null
+  const responseBody = await safeResponseJson(response);
+
+  if (!response.ok) {
+      // Use message from parsed body if available, otherwise use status text/code
+      const errorMessage = responseBody?.message || response.statusText || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+  }
+
+  // If response was OK, but body couldn't be parsed (unexpected)
+  if (response.ok && !responseBody) {
+       console.error("toggleLikePost: Received OK status but no valid JSON body from backend.");
+       throw new Error("Received successful response but failed to parse body.");
+  }
+
+  // Assuming responseBody contains { message, liked, likes }
+  return responseBody as LikeToggleResponse;
+};
+

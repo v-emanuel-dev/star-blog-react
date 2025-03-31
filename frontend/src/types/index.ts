@@ -17,6 +17,8 @@ export interface Post {
   author: string;
   date: string;
   categories: string[];
+  likes: number;
+  likedByCurrentUser?: boolean;
   created_at?: string;
   updated_at?: string;
 }

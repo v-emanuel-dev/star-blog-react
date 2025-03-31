@@ -3,30 +3,39 @@ const router = express.Router();
 const pool = require("../config/db");
 const { protect } = require("../middleware/authMiddleware");
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const sql =
-      "SELECT id, title, excerpt, author, date, categories, created_at FROM posts ORDER BY created_at DESC";
+    // Note: This won't include likedByCurrentUser for performance reasons on list view
+    // Frontend would need a separate call or check based on stored likes if needed
+    const sql = `
+        SELECT
+            p.id, p.title, p.excerpt, p.author, p.date, p.categories,
+            p.created_at, p.updated_at,
+            COUNT(pl.user_id) AS likes
+        FROM posts p
+        LEFT JOIN post_likes pl ON p.id = pl.post_id
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+    `;
     const [results] = await pool.query(sql);
-    const parsedResults = results.map((post) => ({
-      ...post,
-      categories:
-        typeof post.categories === "string"
-          ? JSON.parse(post.categories)
-          : post.categories ?? [],
+
+    const finalResults = results.map(post => ({
+      id: post.id,
+      title: post.title,
+      excerpt: post.excerpt,
+      author: post.author,
+      date: post.date,
+      categories: (typeof post.categories === 'string') ? JSON.parse(post.categories) : post.categories ?? [],
+      likes: Number(post.likes),
+      createdAt: post.created_at,
+      updatedAt: post.updated_at
     }));
-    res.json(parsedResults);
+    res.json(finalResults);
   } catch (error) {
-    console.error("Error fetching posts:", error);
-    res
-      .status(500)
-      .json({
-        message: "Internal server error while fetching posts.",
-        error: error.message,
-      });
+    console.error('Error fetching posts:', error);
+    res.status(500).json({ message: "Internal server error while fetching posts.", error: error.message });
   }
 });
-
 router.get("/:id", async (req, res) => {
   const postId = req.params.id;
   if (isNaN(parseInt(postId))) {
@@ -297,6 +306,40 @@ router.post("/:postId/comments", protect, async (req, res) => {
         error: error.message,
       });
   }
+});
+
+router.post('/:postId/like', protect, async (req, res) => {
+  const postId = req.params.postId;
+  const userId = req.user.id;
+  if (isNaN(parseInt(postId))) { return res.status(400).json({ message: "Invalid post ID." }); }
+  let connection;
+  try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+      const checkSql = "SELECT COUNT(*) as count FROM post_likes WHERE user_id = ? AND post_id = ?";
+      const [rows] = await connection.query(checkSql, [userId, postId]);
+      const alreadyLiked = rows[0].count > 0;
+      let userNowLikes;
+      if (alreadyLiked) {
+          const deleteSql = "DELETE FROM post_likes WHERE user_id = ? AND post_id = ?";
+          await connection.query(deleteSql, [userId, postId]);
+          userNowLikes = false;
+      } else {
+          const insertSql = "INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)";
+          await connection.query(insertSql, [userId, postId]);
+          userNowLikes = true;
+      }
+      const countSql = "SELECT COUNT(*) as totalLikes FROM post_likes WHERE post_id = ?";
+      const [countResult] = await connection.query(countSql, [postId]);
+      const totalLikes = countResult[0].totalLikes;
+      await connection.commit();
+      res.status(200).json({ message: userNowLikes ? "Post liked successfully!" : "Post unliked successfully!", liked: userNowLikes, likes: totalLikes });
+  } catch (error) {
+      if (connection) await connection.rollback();
+      console.error(`Error toggling like for post ${postId} by user ${userId}:`, error);
+       if (error.code === 'ER_NO_REFERENCED_ROW_2') { return res.status(404).json({ message: "Post not found to like/unlike." }); }
+      res.status(500).json({ message: "Internal server error while toggling like.", error: error.message });
+  } finally { if (connection) connection.release(); }
 });
 
 module.exports = router;
