@@ -9,6 +9,7 @@ type LoginCredentials = Pick<User, 'email'> & { password: string };
 type LoginResponse = { message: string; token: string; user: User };
 type ChangePasswordData = { currentPassword: string; newPassword: string };
 type AddCommentData = { content: string };
+type EditCommentData = { content: string }; // Type for editing
 
 // Backend Comment response interface (for mapping)
 interface BackendComment {
@@ -237,4 +238,46 @@ export const addComment = async (postId: string | number, commentData: AddCommen
 
   // Directly assume the response body matches our Comment type
   return responseBody as Comment;
+};
+
+export const editComment = async (commentId: number, commentData: EditCommentData): Promise<{ comment: Comment }> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("Authentication required to edit comment.");
+
+  const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+    method: 'PUT',
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(commentData) // Send { "content": "..." }
+  });
+
+  const responseBody = await response.json().catch(async () => { /* ... error handling ... */ });
+  if (!response.ok) { throw new Error(responseBody.message || `HTTP error! status: ${response.status}`); }
+
+  // Map backend response if necessary (assuming backend sends correct structure now)
+   // const backendComment = responseBody.comment;
+   // const mappedComment: Comment = { ... map logic if needed ... }
+   // return { comment: mappedComment };
+   // Assuming backend sends structure matching Comment type already:
+   return responseBody as { comment: Comment }; // Includes the updated comment object
+};
+
+// DELETE /api/comments/:commentId - Delete a comment (Requires Auth)
+export const deleteComment = async (commentId: number): Promise<{ message: string }> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("Authentication required to delete comment.");
+
+  const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+    method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  const responseBody = await response.json().catch(() => null);
+  if (!response.ok) {
+      const errorMessage = responseBody?.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+  }
+  return responseBody || { message: "Comment deleted successfully!" };
 };
