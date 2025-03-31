@@ -72,6 +72,7 @@ const HomePage: FC = () => {
                             author={post.author}
                             categories={post.categories}
                             likes={post.likes}
+                            commentCount={post.commentCount} // <-- Pass commentCount prop
                         />
                     ))}
                 </div>

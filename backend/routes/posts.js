@@ -5,20 +5,22 @@ const { protect } = require("../middleware/authMiddleware");
 
 router.get('/', async (req, res) => {
   try {
-    // Note: This won't include likedByCurrentUser for performance reasons on list view
-    // Frontend would need a separate call or check based on stored likes if needed
+    // Updated SQL: LEFT JOIN post_likes and comments, COUNT distinct ids
     const sql = `
         SELECT
             p.id, p.title, p.excerpt, p.author, p.date, p.categories,
             p.created_at, p.updated_at,
-            COUNT(pl.user_id) AS likes
+            COUNT(DISTINCT pl.user_id) AS likes,
+            COUNT(DISTINCT c.id) AS commentCount
         FROM posts p
         LEFT JOIN post_likes pl ON p.id = pl.post_id
+        LEFT JOIN comments c ON p.id = c.post_id
         GROUP BY p.id
         ORDER BY p.created_at DESC
     `;
     const [results] = await pool.query(sql);
 
+    // Map results including the new commentCount
     const finalResults = results.map(post => ({
       id: post.id,
       title: post.title,
@@ -27,15 +29,18 @@ router.get('/', async (req, res) => {
       date: post.date,
       categories: (typeof post.categories === 'string') ? JSON.parse(post.categories) : post.categories ?? [],
       likes: Number(post.likes),
+      commentCount: Number(post.commentCount), // Add commentCount
       createdAt: post.created_at,
       updatedAt: post.updated_at
     }));
+
     res.json(finalResults);
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ message: "Internal server error while fetching posts.", error: error.message });
   }
 });
+
 router.get("/:id", async (req, res) => {
   const postId = req.params.id;
   if (isNaN(parseInt(postId))) {

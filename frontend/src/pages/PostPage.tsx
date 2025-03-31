@@ -5,10 +5,9 @@ import { getPostById, deletePost, getCommentsForPost, addComment, editComment, d
 import { useAuth } from '../context/AuthContext';
 import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
-import { format, parseISO } from 'date-fns';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrashAlt, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
-
+import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateUtils';
 
 const DefaultAvatar: FC<{ className?: string }> = ({ className = "h-full w-full text-gray-400" }) => (
     <svg className={className} fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
@@ -47,15 +46,6 @@ const PostPage: FC = () => {
         if (!avatarPath) return null;
         if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) return avatarPath;
         return `${BACKEND_URL}${avatarPath}`;
-    }, []);
-
-    const formatDate = useCallback((dateString: string | undefined): string => {
-        if (!dateString) return '';
-        try {
-            const date = parseISO(dateString);
-            if (isNaN(date.getTime())) return dateString;
-            return format(date, 'dd/MM/yyyy HH:mm');
-        } catch (error) { return dateString; }
     }, []);
 
     useEffect(() => {
@@ -167,7 +157,7 @@ const PostPage: FC = () => {
                  )}
                 <h1 className="text-3xl font-bold mb-4 text-gray-900 pr-32">{post.title}</h1>
                  {post.categories && post.categories.length > 0 && ( <div className="mb-4 flex flex-wrap gap-1">{post.categories.map((category, index) => ( <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{category}</span> ))}</div> )}
-                 <div className="text-gray-500 mb-6"><span>{post.date}</span> • <span>By: {post.author}</span></div>
+                 <div className="text-gray-500 mb-6"><span>{formatDisplayDate(post?.date)}</span> • <span>By: {post.author}</span></div>
                  <div className="prose max-w-none mb-6"><p className="text-gray-700">{post.excerpt}</p></div>
                  <div className="prose max-w-none">{post.content ? <p className="text-gray-700">{post.content}</p> : <p className="text-gray-500 italic">(Full content not available)</p>}</div>
                  <div className="mt-8 pt-4 border-t"><Link to="/" className="text-blue-500 hover:underline">← Back to posts list</Link></div>
@@ -208,7 +198,7 @@ const PostPage: FC = () => {
                                         <div className="flex justify-between items-start mb-1">
                                             <div>
                                                  <span className="text-sm font-medium text-gray-900">{comment.user?.name || 'Anonymous'}</span>
-                                                 <span className="text-xs text-gray-500 ml-2">{formatDate(comment.createdAt)}</span>
+                                                 <span className="text-xs text-gray-500 ml-2">{formatDisplayDateTime(comment.createdAt)}</span>
                                                   {comment.updatedAt && comment.updatedAt !== comment.createdAt && (
                                                      <span className="text-xs text-gray-400 italic ml-2">(edited)</span>
                                                   )}

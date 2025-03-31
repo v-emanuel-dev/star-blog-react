@@ -19,6 +19,7 @@ export interface Post {
   categories: string[];
   likes: number;
   likedByCurrentUser?: boolean;
+  commentCount: number;
   created_at?: string;
   updated_at?: string;
 }
