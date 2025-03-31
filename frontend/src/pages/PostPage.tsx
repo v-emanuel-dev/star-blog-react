@@ -1,128 +1,206 @@
-import React, { FC, useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import PostForm from '../components/PostForm';
-import { Post } from '../types';
-import { getPostById, updatePost } from '../services/api';
+import React, { FC, useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Post, Comment } from '../types';
+import { getPostById, deletePost, getCommentsForPost, addComment } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Alert from '../components/Alert';
-import Spinner from '../components/Spinner'; // Ensure Spinner is imported
+import Spinner from '../components/Spinner';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-type PostFormData = Omit<Post, 'id'>;
+const DefaultAvatar: FC<{ className?: string }> = ({ className = "h-full w-full text-gray-400" }) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
+);
+const BACKEND_URL = 'http://localhost:4000';
 
-const EditPostPage: FC = () => {
-    const { id } = useParams<{ id: string }>();
+interface PostParams { id: string; [key: string]: string; }
+
+const PostPage: FC = () => {
+    const { id } = useParams<PostParams>();
     const navigate = useNavigate();
-    const [post, setPost] = useState<PostFormData | null>(null);
-    const [isLoading, setIsLoading] = useState(true); // For initial fetch
-    const [isSaving, setIsSaving] = useState(false); // For submission
+    const location = useLocation();
+    const { user: loggedInUser, token } = useAuth();
+
+    const [post, setPost] = useState<Post | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+    // Using the correct Comment type from our types file
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [commentsLoading, setCommentsLoading] = useState<boolean>(true);
+    const [commentsError, setCommentsError] = useState<string | null>(null);
+    const [newComment, setNewComment] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+    const getAvatarSrc = (avatarPath: string | null | undefined): string | null => {
+        if (!avatarPath) return null;
+        if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) return avatarPath;
+        return `${BACKEND_URL}${avatarPath}`;
+    };
 
     useEffect(() => {
-        if (!id) {
-            setError("Post ID not provided in the URL.");
-            setIsLoading(false);
-            return;
-        }
-        const fetchPostData = async () => {
-            setIsLoading(true);
-            setError(null);
+        if (!id) { setError("Invalid post ID."); setLoading(false); return; }
+        let isMounted = true;
+        const fetchPostAndComments = async () => {
+            setLoading(true); setCommentsLoading(true); setError(null); setCommentsError(null);
             try {
-                const fetchedPost: Post = await getPostById(id);
-                const initialData: PostFormData = {
-                    title: fetchedPost.title,
-                    excerpt: fetchedPost.excerpt || '',
-                    content: fetchedPost.content || '',
-                    author: fetchedPost.author || '',
-                    date: fetchedPost.date || '',
-                    categories: (fetchedPost.categories || []).join(', '),
-                };
-                setPost(initialData);
+                const [fetchedPost, fetchedComments] = await Promise.all([
+                    getPostById(id),
+                    getCommentsForPost(id) // Now returns mapped Comment[] type
+                ]);
+                if (isMounted) {
+                    setPost(fetchedPost);
+                    setComments(fetchedComments); // Now works correctly with our Comment type
+                }
             } catch (err) {
-                 console.error("Error fetching post for editing:", err);
-                 if (err instanceof Error) {
-                    setError(`Error loading post: ${err.message}`);
-                 } else {
-                    setError("An unknown error occurred while loading the post.");
-                 }
-                 setPost(null);
+                if (isMounted) {
+                    const errorMsg = err instanceof Error ? err.message : 'Unknown error.';
+                    setError(`Failed to load post or comments: ${errorMsg}`);
+                    setPost(null); setComments([]);
+                }
             } finally {
-                setIsLoading(false);
+                if (isMounted) { setLoading(false); setCommentsLoading(false); }
             }
         };
-        fetchPostData();
+        fetchPostAndComments();
+        return () => { isMounted = false; };
     }, [id]);
 
-    const handleUpdatePost = async (postData: PostFormData) => {
-        if (!id) {
-            setError("Cannot update: Post ID is missing.");
-            return;
-        }
-        setIsSaving(true);
-        setError(null);
-        try {
-            const result = await updatePost(id, postData);
-            console.log('Post updated:', result.post);
-            navigate('/', { replace: true });
-        } catch (err) {
-            console.error("Error updating post:", err);
-            if (err instanceof Error) {
-                setError(`Error saving changes: ${err.message}`);
-            } else {
-                setError("An unknown error occurred while saving.");
+    const handleDelete = async () => {
+        if (!id || !post) return;
+        const confirmDelete = window.confirm(`Are you sure?`);
+        if (confirmDelete) {
+            setIsDeleting(true); setError(null); setCommentsError(null);
+            try {
+                await deletePost(id);
+                navigate('/', { replace: true });
+            } catch (err) {
+                setError(err instanceof Error ? `Error deleting: ${err.message}` : 'Unknown error.');
+                setIsDeleting(false);
             }
-            setIsSaving(false);
         }
     };
 
-    if (isLoading) { // Initial data loading
-         return (
-             <div className="flex justify-center items-center py-10">
-                  <Spinner size="lg" /> {/* Use Spinner */}
-             </div>
-         );
-     }
+    const handleCommentSubmit = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!id || !newComment.trim() || !token) return;
+        setIsSubmittingComment(true); setCommentsError(null);
+        try {
+            // Now returns correctly mapped Comment type
+            const addedComment = await addComment(id, { content: newComment.trim() });
+            setComments(prevComments => [addedComment, ...prevComments]); // Now works correctly
+            setNewComment('');
+        } catch (err) {
+            setCommentsError(err instanceof Error ? `Failed to add comment: ${err.message}` : 'Unknown error.');
+        } finally {
+            setIsSubmittingComment(false);
+        }
+    };
 
-    // Error during initial load
-    if (error && !post && !isSaving) {
-        return (
-            <div className="px-4 sm:px-6 lg:px-8 py-4 text-center">
-                 <Alert
-                    message={error}
-                    type="error"
-                    title="Error Loading!"
-                    onClose={() => setError(null)}
-                />
-                <Link to="/" className="text-blue-500 hover:underline mt-4 inline-block">
-                    Back to homepage
-                </Link>
-            </div>
-        );
+    const formatDate = (dateString: string | undefined): string => {
+        console.log("--- formatDate ---"); // Log start
+        console.log("Input string:", dateString); // Log the exact input received
+    
+        if (!dateString) {
+            console.log("Returning empty string because input was falsy.");
+            return ''; // Returns empty string if input is null, undefined, or empty
+        }
+        try {
+            // Attempt to parse the string as an ISO date
+            const date = parseISO(dateString);
+            console.log("Parsed date object:", date);
+    
+            // Check if parsing resulted in a valid date
+            if (isNaN(date.getTime())) {
+                 console.error("Parsed date is invalid.");
+                 console.log("Returning original invalid string as fallback.");
+                 return dateString; // Return original string if date is invalid
+            }
+    
+            // Format the valid date
+            const formattedDate = format(date, 'dd/MM/yyyy HH:mm'); // Your desired format
+            console.log("Formatted date:", formattedDate);
+            console.log("Returning formatted date.");
+            return formattedDate;
+    
+        } catch (error) {
+            // Catch errors specifically during parsing/formatting
+            console.error("Error caught during date parsing/formatting:", dateString, error);
+            console.log("Returning original string as fallback due to error.");
+            return dateString; // Fallback to original string on any error
+        }
     }
+
+    if (loading) { return <div className="flex justify-center items-center py-10"><Spinner size="lg" /></div>; }
+
+    if (error && !post) {
+        return ( <div className="px-4 sm:px-6 lg:px-8 py-4 text-center"><Alert message={error} type="error" title="Error!" onClose={() => setError(null)} /><Link to="/" className="text-blue-500 hover:underline mt-4 inline-block">Back to homepage</Link></div> );
+    }
+
+    if (!post) { return ( <div className="px-4 sm:px-6 lg:px-8 py-4"><h1 className="text-2xl font-bold mb-4 text-gray-900">Post not found</h1><Link to="/" className="text-blue-500 hover:underline">Back to homepage</Link></div> ); }
 
     return (
         <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-                <h1 className="text-2xl font-bold mb-6 text-gray-900">Edit Post</h1>
-                {/* Saving error display */}
-                {error && !isLoading && (
-                    <Alert
-                        message={error}
-                        type="error"
-                        title="Error Saving!"
-                        onClose={() => setError(null)}
-                    />
+            <article className="bg-white rounded-lg shadow-md p-6 relative pb-10 mb-8">
+                {loggedInUser && (
+                    <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                        <Link to={`/edit-post/${post.id}`} className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-semibold py-1 px-3 rounded transition duration-150 ease-in-out">Edit</Link>
+                        <button onClick={handleDelete} disabled={isDeleting} className={`bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-3 rounded transition duration-150 ease-in-out ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
                 )}
-                {post ? (
-                    <PostForm
-                        onSubmit={handleUpdatePost}
-                        initialData={post}
-                        isLoading={isSaving} // Use isSaving for the button state
-                        submitButtonText="Update Post"
-                    />
-                ) : (
-                     !error && <p className="text-center text-gray-500">Post data not available.</p>
+                <h1 className="text-3xl font-bold mb-4 text-gray-900 pr-24">{post.title}</h1>
+                {post.categories && post.categories.length > 0 && (
+                    <div className="mb-4 flex flex-wrap gap-1">
+                        {post.categories.map((category, index) => ( <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{category}</span> ))}
+                    </div>
                 )}
-            </div>
+                <div className="text-gray-500 mb-6"><span>{post.date}</span> • <span>By: {post.author}</span></div>
+                <div className="prose max-w-none mb-6"><p className="text-gray-700">{post.excerpt}</p></div>
+                <div className="prose max-w-none">{post.content ? <p className="text-gray-700">{post.content}</p> : <p className="text-gray-500 italic">(Full content not available)</p>}</div>
+                <div className="mt-8 pt-4 border-t"><Link to="/" className="text-blue-500 hover:underline">← Back to posts list</Link></div>
+            </article>
+
+            <section className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-semibold mb-6 text-gray-800">Comments ({comments.length})</h2>
+                {loggedInUser ? (
+                    <form onSubmit={handleCommentSubmit} className="mb-6">
+                        <label htmlFor="newComment" className="block text-sm font-medium text-gray-700 mb-1">Add a comment:</label>
+                        <textarea id="newComment" rows={3} value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Write your thoughts..." required disabled={isSubmittingComment} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50" />
+                        {commentsError && <Alert message={commentsError} type="error" title="Error!" onClose={() => setCommentsError(null)} className="mt-2 text-xs"/>}
+                        <div className="mt-2 flex justify-end">
+                            <button type="submit" disabled={isSubmittingComment || !newComment.trim()} className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                {isSubmittingComment ? <Spinner size="sm" color="text-white" className="mr-2"/> : null}
+                                {isSubmittingComment ? 'Submitting...' : 'Submit Comment'}
+                            </button>
+                        </div>
+                    </form>
+                ) : ( <p className="text-gray-600 mb-6">Please <Link to="/login" state={{ from: location }} className="text-indigo-600 hover:underline">log in</Link> to add a comment.</p> )}
+                <div className="space-y-6">
+                    {commentsLoading ? ( <div className="flex justify-center py-6"><Spinner size="md"/></div> )
+                     : commentsError && !isSubmittingComment ? ( <Alert message={commentsError} type="error" title="Could not load comments" onClose={() => setCommentsError(null)} /> )
+                     : comments.length === 0 ? ( <p className="text-gray-500 text-center py-4">Be the first to comment!</p> )
+                      : ( comments.map((comment) => { const commentAvatarSrc = getAvatarSrc(comment.user?.avatarUrl); return (
+                                <div key={comment.id} className="flex space-x-3 border-b border-gray-200 pb-4 last:border-b-0">
+                                    <div className="flex-shrink-0">
+                                        {commentAvatarSrc ? (<img className="h-10 w-10 rounded-full object-cover" src={commentAvatarSrc} alt={`${comment.user?.name || 'User'}'s avatar`} />)
+                                        : (<span className="inline-block h-10 w-10 overflow-hidden rounded-full bg-gray-200"><DefaultAvatar className="h-full w-full text-gray-400"/></span>)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-sm font-medium text-gray-900">{comment.user?.name || 'Anonymous'}</p>
+                                            <p className="text-xs text-gray-500">{formatDate(comment.createdAt)}</p>
+                                        </div>
+                                        <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                                    </div>
+                                </div> );
+                         })
+                    )}
+                </div>
+            </section>
         </div>
     );
 };
-export default EditPostPage;
+export default PostPage;

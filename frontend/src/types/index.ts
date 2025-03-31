@@ -1,20 +1,33 @@
-export interface Post {
+// src/types/index.ts
+
+export interface User {
   id: number;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Post {
+  id: number | string;
   title: string;
   excerpt: string;
   content?: string;
-  date: string;
   author: string;
-  categories?: string[];
+  date: string;
+  categories: string[];
   created_at?: string;
   updated_at?: string;
 }
 
-export interface User {
+export interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  user?: {
     id: number;
-    email: string;
-    name: string | null;
+    name: string;
     avatarUrl?: string | null;
-    created_at?: string;
-    updated_at?: string;
+  };
 }

@@ -1,4 +1,5 @@
-import { Post, User } from '../types';
+// src/services/api.ts
+import { Post, User, Comment } from '../types';
 
 const API_BASE_URL = 'http://localhost:4000/api';
 
@@ -7,14 +8,25 @@ type RegisterUserData = Pick<User, 'email' | 'name'> & { password: string };
 type LoginCredentials = Pick<User, 'email'> & { password: string };
 type LoginResponse = { message: string; token: string; user: User };
 type ChangePasswordData = { currentPassword: string; newPassword: string };
+type AddCommentData = { content: string };
 
+// Backend Comment response interface (for mapping)
+interface BackendComment {
+  id: number;
+  content: string;
+  created_at: string; // Snake case from backend
+  user?: {
+    id: number;
+    name: string;
+    avatarUrl?: string | null;
+  };
+}
 
 export const getAllPosts = async (): Promise<Post[]> => {
    const response = await fetch(`${API_BASE_URL}/posts`);
    if (!response.ok) {
        throw new Error(`HTTP error! status: ${response.status}`);
    }
-   // Assuming backend GET /api/posts now returns categories correctly parsed
    const posts: Post[] = await response.json();
    return posts;
 }
@@ -26,7 +38,6 @@ export const getPostById = async (id: string): Promise<Post> => {
        if (response.status === 404) throw new Error('Post not found.');
        throw new Error(`HTTP error! status: ${response.status}`);
    }
-    // Assuming backend GET /api/posts/:id now returns categories correctly parsed
    const post: Post = await response.json();
    return post;
  };
@@ -65,7 +76,6 @@ export const updatePost = async (id: number | string, postData: PostInputData): 
   if (!response.ok) {
     throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
   }
-   // Assuming backend PUT /api/posts/:id returns categories correctly parsed
   return responseBody;
 };
 
@@ -109,17 +119,16 @@ export const loginUser = async (credentials: LoginCredentials): Promise<LoginRes
     if (!response.ok) {
         throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
     }
-     // Map response from backend's snake_case before returning
      const backendUser = responseBody.user;
      const mappedUser: User = {
          id: backendUser.id,
          email: backendUser.email,
          name: backendUser.name,
-         avatarUrl: backendUser.avatar_url || null, // Mapping
+         avatarUrl: backendUser.avatar_url || null,
          created_at: backendUser.created_at,
          updated_at: backendUser.updated_at
      };
-    return { ...responseBody, user: mappedUser }; // Return object with mapped user
+    return { ...responseBody, user: mappedUser };
 };
 
 export const getCurrentUser = async (): Promise<User> => {
@@ -138,7 +147,7 @@ export const getCurrentUser = async (): Promise<User> => {
         id: responseBody.id,
         email: responseBody.email,
         name: responseBody.name,
-        avatarUrl: responseBody.avatar_url || null, // Mapping
+        avatarUrl: responseBody.avatar_url || null,
         created_at: responseBody.created_at,
         updated_at: responseBody.updated_at
     };
@@ -149,10 +158,10 @@ export const updateUserProfile = async (formData: FormData): Promise<{ user: Use
     const token = localStorage.getItem('authToken');
     if (!token) throw new Error("No authentication token found.");
 
-    const fetchUrl = `${API_BASE_URL}/users/profile`; // Correct URL
+    const fetchUrl = `${API_BASE_URL}/users/profile`;
     const response = await fetch(fetchUrl, {
         method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }, // Correct token key
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
     });
     const responseBody = await response.json().catch(async () => {
@@ -163,7 +172,12 @@ export const updateUserProfile = async (formData: FormData): Promise<{ user: Use
 
     const backendUser = responseBody.user;
     const mappedUser: User = {
-        id: backendUser.id, email: backendUser.email, name: backendUser.name, avatarUrl: backendUser.avatar_url || null, created_at: backendUser.created_at, updated_at: backendUser.updated_at
+        id: backendUser.id,
+        email: backendUser.email,
+        name: backendUser.name,
+        avatarUrl: backendUser.avatar_url || null,
+        created_at: backendUser.created_at,
+        updated_at: backendUser.updated_at
     };
     return { user: mappedUser };
 };
@@ -178,7 +192,7 @@ export const changePassword = async (passwords: ChangePasswordData): Promise<{ m
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(passwords) // Send current and new password
+      body: JSON.stringify(passwords)
   });
 
   const responseBody = await response.json().catch(async () => {
@@ -187,9 +201,40 @@ export const changePassword = async (passwords: ChangePasswordData): Promise<{ m
   });
 
   if (!response.ok) {
-      // Backend sends specific messages for errors (e.g., 'Incorrect current password.')
       throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
   }
-  // Expects { message: string } from backend on success
   return responseBody;
+};
+
+export const getCommentsForPost = async (postId: string | number): Promise<Comment[]> => {
+  const fetchUrl = `${API_BASE_URL}/posts/${postId}/comments`;
+  const response = await fetch(fetchUrl);
+  if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  // Directly assume the response body is an array matching our Comment type
+  const comments: Comment[] = await response.json();
+  return comments;
+};
+
+// POST /api/posts/:postId/comments
+export const addComment = async (postId: string | number, commentData: AddCommentData): Promise<Comment> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("Authentication required to comment.");
+
+  const fetchUrl = `${API_BASE_URL}/posts/${postId}/comments`;
+  const response = await fetch(fetchUrl, {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(commentData)
+  });
+
+  const responseBody = await response.json().catch(async () => { /* ... error handling ... */ });
+  if (!response.ok) { throw new Error(responseBody.message || `HTTP error! status: ${response.status}`); }
+
+  // Directly assume the response body matches our Comment type
+  return responseBody as Comment;
 };
