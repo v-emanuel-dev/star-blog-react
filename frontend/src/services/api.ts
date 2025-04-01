@@ -126,25 +126,24 @@ export const registerUser = async (formData: FormData): Promise<{ userId: number
 };
 
 export const loginUser = async (credentials: LoginCredentials): Promise<LoginResponse> => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-    });
-    const responseBody = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
-    }
-     const backendUser = responseBody.user;
-     const mappedUser: User = {
-         id: backendUser.id,
-         email: backendUser.email,
-         name: backendUser.name,
-         avatarUrl: backendUser.avatar_url || null,
-         created_at: backendUser.created_at,
-         updated_at: backendUser.updated_at
-     };
-    return { ...responseBody, user: mappedUser };
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+  });
+
+  // Try to parse response first
+  const responseBody = await response.json().catch(() => ({}));
+
+  // Check if response is OK
+  if (!response.ok) {
+      // Use message from parsed body if available, otherwise status
+      throw new Error(responseBody.message || `HTTP error! status: ${response.status}`);
+  }
+
+  // Backend already sends the user object mapped correctly, just return the whole response body
+  // Make sure the LoginResponse type expects the correct User type
+  return responseBody as LoginResponse;
 };
 
 export const getCurrentUser = async (): Promise<User> => {
