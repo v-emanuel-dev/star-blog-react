@@ -8,16 +8,15 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbsUp as faThumbsUpSolid } from '@fortawesome/free-solid-svg-icons';
 import { faThumbsUp as faThumbsUpRegular } from '@fortawesome/free-regular-svg-icons';
 import { formatDisplayDate } from '../utils/dateUtils';
-// Optional: Icon for comments
 import { faComment } from '@fortawesome/free-regular-svg-icons';
-
+import { User } from '../types'; // Import User type for author prop
 
 interface PostCardProps {
   id: number | string;
   title: string;
   excerpt: string;
   date: string;
-  author: string;
+  author: { id: number | null; name: string | null; } | null;
   categories?: string[];
   likes: number;
   commentCount: number; // Add commentCount prop
@@ -65,7 +64,7 @@ const PostCard: FC<PostCardProps> = ({
       <div className="mt-auto">
         <div className="flex justify-between text-xs text-gray-500 mb-3">
              <span>{formatDisplayDate(date)}</span>
-             <span>By: {author}</span>
+             <span>By: {author?.name || 'Unknown Author'}</span>
         </div>
         {likeError && <Alert message={likeError} type="error" title="Error" onClose={() => setLikeError(null)} className="mb-2 text-xs"/>}
         <div className="border-t pt-3 flex items-center justify-between"> {/* This div uses justify-between */}
