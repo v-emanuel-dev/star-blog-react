@@ -87,6 +87,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/comments', commentsRouter);
 
 // --- START SERVER ---
-app.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
+// TO THIS:
+server.listen(PORT, () => {
+  console.log(`Backend server running on port ${PORT} with Socket.IO enabled`);
 });

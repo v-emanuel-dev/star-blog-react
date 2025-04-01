@@ -232,7 +232,6 @@ export const getCommentsForPost = async (postId: string | number): Promise<Comme
   return comments;
 };
 
-// POST /api/posts/:postId/comments
 export const addComment = async (postId: string | number, commentData: AddCommentData): Promise<Comment> => {
   const token = localStorage.getItem('authToken');
   if (!token) throw new Error("Authentication required to comment.");
@@ -278,7 +277,6 @@ export const editComment = async (commentId: number, commentData: EditCommentDat
    return responseBody as { comment: Comment }; // Includes the updated comment object
 };
 
-// DELETE /api/comments/:commentId - Delete a comment (Requires Auth)
 export const deleteComment = async (commentId: number): Promise<{ message: string }> => {
   const token = localStorage.getItem('authToken');
   if (!token) throw new Error("Authentication required to delete comment.");
