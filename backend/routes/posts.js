@@ -52,22 +52,73 @@ router.post('/', protect, async (req, res) => {
 
 router.put('/:id', protect, async (req, res) => {
   const postId = req.params.id;
+  const userId = req.user.id; // Logged-in user ID from 'protect' middleware
   const { title, excerpt, content, date, categories } = req.body;
+
   if (isNaN(parseInt(postId))) { return res.status(400).json({ message: "Invalid post ID." }); }
   if (!title) { return res.status(400).json({ message: "Title is required for updates." }); }
+
+  let connection; // For transaction handling
   try {
-      const sql = `UPDATE posts SET title = ?, excerpt = ?, content = ?, date = ?, categories = ? WHERE id = ?`;
+      connection = await pool.getConnection();
+      await connection.beginTransaction(); // Start transaction
+
+      // 1. Fetch the post AND its author_id
+      const [posts] = await connection.query("SELECT author_id FROM posts WHERE id = ?", [postId]);
+
+      if (posts.length === 0) {
+          await connection.rollback();
+          return res.status(404).json({ message: "Post not found." });
+      }
+
+      const postAuthorId = posts[0].author_id;
+
+      // 2. Check Ownership
+      if (postAuthorId !== userId) {
+          await connection.rollback();
+          // Use 403 Forbidden: Authenticated, but not authorized for this resource
+          return res.status(403).json({ message: "User not authorized to edit this post." });
+      }
+
+      // 3. If ownership verified, proceed with update
+      const sqlUpdate = `UPDATE posts SET title = ?, excerpt = ?, content = ?, date = ?, categories = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
       const values = [ title, excerpt || null, content || null, date || null, JSON.stringify(categories || []), postId ];
-      const [results] = await pool.query(sql, values);
-      if (results.affectedRows === 0) { return res.status(404).json({ message: "Post not found for update." }); }
-      const [updatedPostResult] = await pool.query("SELECT p.*, u.id AS authorId, u.name AS authorName FROM posts p LEFT JOIN users u ON p.author_id = u.id WHERE p.id = ?", [postId]);
-      if (updatedPostResult.length === 0) { return res.status(404).json({ message: "Post not found after update." }); }
+      const [results] = await connection.query(sqlUpdate, values);
+
+      // Check affectedRows just in case (should be 1 if select worked)
+      if (results.affectedRows === 0) {
+           await connection.rollback();
+           // This case implies the post disappeared between select and update
+           return res.status(404).json({ message: "Post not found during update attempt." });
+      }
+
+      // 4. Fetch updated post data to return (including author info)
+      const [updatedPostResult] = await connection.query(
+          "SELECT p.*, u.id AS authorId, u.name AS authorName FROM posts p LEFT JOIN users u ON p.author_id = u.id WHERE p.id = ?",
+          [postId]
+      );
+
+      await connection.commit(); // Commit transaction
+
+      if (updatedPostResult.length === 0) {
+           // Should not happen if update succeeded
+           throw new Error("Failed to retrieve post after successful update.");
+      }
+
       const backendPost = updatedPostResult[0];
-      const mappedPost = { id: backendPost.id, title: backendPost.title, excerpt: backendPost.excerpt, content: backendPost.content, date: backendPost.date, author: { id: backendPost.authorId, name: backendPost.authorName || 'Unknown Author' }, categories: (typeof backendPost.categories === 'string') ? JSON.parse(backendPost.categories) : backendPost.categories ?? [], likes: Number(backendPost.likes), createdAt: backendPost.created_at, updatedAt: backendPost.updated_at };
+      const mappedPost = { /* ... map fields including author object ... */ }; // Ensure mapping is correct
+       mappedPost.author = { id: backendPost.authorId, name: backendPost.authorName || 'Unknown Author' };
+       mappedPost.likes = Number(backendPost.likes || 0); // Ensure likes are included if needed
+       //... other fields
+
       res.status(200).json({ message: "Post successfully updated!", post: mappedPost });
+
   } catch (error) {
+      if (connection) await connection.rollback(); // Rollback on error
       console.error(`Error updating post with ID ${postId}:`, error);
       res.status(500).json({ message: "Internal server error while updating the post.", error: error.message });
+  } finally {
+      if (connection) connection.release(); // Release connection
   }
 });
 

@@ -244,7 +244,7 @@ const Header: FC = () => {
           </div>
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
             {isLoading ? (
-              <Spinner size="sm" color="text-gray-400" />
+              <Spinner size="sm" color="taext-gray-400" />
             ) : user ? (
               <div className="flex items-center space-x-3 sm:space-x-4">
                 <div className="relative" ref={notificationDropdownRef}>
@@ -262,65 +262,46 @@ const Header: FC = () => {
                     )}
                   </button>
                   {isNotificationDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-80 origin-top-right bg-white rounded-md shadow-lg z-50 ring-1 ring-black ring-opacity-5 focus:outline-none">
-                      <div className="bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium border-b flex justify-between items-center">
-                        <span>Notifications</span>
-                        {notifications.length > 0 && (
-                          <button
-                            onClick={() => {
-                              clearNotifications();
-                              setIsNotificationDropdownOpen(false);
-                            }}
-                            className="text-xs text-indigo-600 hover:underline"
-                          >
-                            Clear All
-                          </button>
-                        )}
-                      </div>
+                    // Use Tailwind UI example classes here (adjusted width)
+                    <div
+                      className="absolute right-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white py-1 shadow-lg focus:outline-none"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu-button"
+                    >
                       <div className="max-h-80 overflow-y-auto">
                         {!notifications || notifications.length === 0 ? (
-                          <div className="py-4 px-3 text-center text-gray-500 text-sm flex items-center justify-center">
-                            <FontAwesomeIcon
-                              icon={faInfoCircle}
-                              className="mr-2 h-4 w-4"
-                            />
+                          // Styled "No notifications" message
+                          <p className="px-4 py-3 text-center text-sm text-gray-500">
                             No new notifications
-                          </div>
+                          </p>
                         ) : (
                           notifications.map((notification) => (
+                            // Use Tailwind UI example item classes
                             <div
                               key={notification.id}
-                              className={`border-b last:border-0 p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-150 ${
-                                !notification.read ? "bg-indigo-50" : "bg-white"
-                              }`}
+                              className="block px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-100"
                               onClick={() =>
                                 handleNotificationClick(
                                   notification.postId,
                                   notification.commentId
                                 )
                               }
+                              role="menuitem"
                             >
-                              <div className="flex justify-between items-start">
-                                <div className="text-sm text-gray-800">
-                                  {notification.message}
-                                </div>
-                                <FontAwesomeIcon
-                                  icon={faExternalLinkAlt}
-                                  className="h-3 w-3 text-gray-400 mt-1 ml-2 flex-shrink-0"
-                                />
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
+                              {/* Simple message + time layout */}
+                              <p className="truncate">{notification.message}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
                                 {formatRelativeTime(notification.timestamp)}
-                              </div>
+                              </p>
                             </div>
                           ))
                         )}
                       </div>
                     </div>
                   )}
+                  {/* --- END Notification Dropdown Panel --- */}
                 </div>
-
-                {/* User menu dropdown */}
                 {/* User menu dropdown */}
                 <div className="relative ml-3" ref={userMenuRef}>
                   <div>
