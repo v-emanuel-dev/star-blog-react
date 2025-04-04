@@ -14,7 +14,7 @@ import { User, Post } from '../types'; // Import Post if needed for Omit, or jus
 interface PostCardProps {
   id: number | string;
   title: string;
-  excerpt: string;
+  content: string;
   date: string;
   author: { id: number | null; name: string | null; } | null;
   categories?: string[]; // Receive as optional array
@@ -24,7 +24,7 @@ interface PostCardProps {
 }
 
 const PostCard: FC<PostCardProps> = ({
-  id, title, excerpt, date, author, categories = [], // Default categories to []
+  id, title, content, date, author, categories = [], // Default categories to []
   likes: initialLikes, commentCount, likedByCurrentUser = false
 }) => {
   const { user: loggedInUser } = useAuth();
@@ -53,43 +53,86 @@ const PostCard: FC<PostCardProps> = ({
   // Sort categories alphabetically before rendering
   const sortedCategories = categories.slice().sort((a, b) => a.localeCompare(b));
 
+  const truncateContent = (text: string | undefined, maxLength: number = 150): string => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    // Find the last space within the maxLength to avoid cutting words
+    const truncated = text.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return lastSpace > 0 ? `${truncated.substring(0, lastSpace)}...` : `${truncated}...`;
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-4 hover:shadow-lg transition-shadow flex flex-col h-full">
-      <div className="flex-grow">
-        <Link to={`/post/${id}`}>
-            <h2 className="text-xl font-bold mb-2 text-blue-600 hover:text-blue-800">{title}</h2>
+    // Card container: Added slight border, ensure full height for grid alignment
+    <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 border border-gray-200 flex flex-col h-full overflow-hidden">
+      {/* Growable content area */}
+      <div className="p-6 flex-grow"> {/* Standardized padding */}
+        {/* Title */}
+        <Link to={`/post/${id}`} className="block mb-2 group">
+            <h2 className="text-lg font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors duration-150 ease-in-out">{title}</h2>
+            {/* Use text-lg for slightly smaller title, adjust if needed */}
         </Link>
-        <p className="text-gray-700 mb-4 text-sm">{excerpt}</p>
-        {/* Use sortedCategories here */}
+        <p className="text-gray-600 mb-4 text-sm leading-relaxed">{truncateContent(content, 150)}</p>
+        {/* Categories */}
         {sortedCategories.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-1">
+            <div className="mb-4 flex flex-wrap gap-2"> {/* Increased gap */}
               {sortedCategories.map((category, index) => (
-                <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                <span key={index} className="bg-indigo-100 text-indigo-700 text-xs font-medium px-2.5 py-0.5 rounded-full"> {/* Pill shape, adjusted colors */}
                   {category}
                 </span>
               ))}
             </div>
         )}
       </div>
-      <div className="mt-auto">
-        <div className="flex justify-between text-xs text-gray-500 mb-3">
+      {/* Footer area */}
+      <div className="px-6 pt-3 pb-4 bg-gray-50 border-t border-gray-100"> {/* Footer background + padding */}
+        {/* Meta: Date & Author */}
+        <div className="flex justify-between text-sm text-gray-500 mb-2"> {/* Larger text-sm, smaller margin */}
              <span>{formatDisplayDate(date)}</span>
              <span>By: {author?.name || 'Unknown Author'}</span>
         </div>
+
+        {/* Like Error Alert */}
         {likeError && <Alert message={likeError} type="error" title="Error" onClose={() => setLikeError(null)} className="mb-2 text-xs"/>}
-        <div className="border-t pt-3 flex items-center justify-between">
-            <button onClick={handleLikeToggle} disabled={isLiking || !loggedInUser} title={!loggedInUser ? "Log in to like" : (isLiked ? "Unlike post" : "Like post")} className={`flex items-center transition-colors duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed ${ isLiked ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-blue-600' }`}>
-               {isLiking ? (<Spinner size="sm" className="mr-1 w-4 h-4"/>) : (<FontAwesomeIcon icon={isLiked ? faThumbsUpSolid : faThumbsUpRegular} className="mr-1 h-4 w-4"/>)}
-               <span className="text-sm font-medium">Like ({displayLikes})</span>
+
+        {/* Actions: Like & Comment Count */}
+        <div className="flex items-center justify-between">
+            {/* Like Button */}
+            <button
+                onClick={handleLikeToggle}
+                disabled={isLiking || !loggedInUser}
+                title={!loggedInUser ? "Log in to like" : (isLiked ? "Unlike post" : "Like post")}
+                // Improved styling for like button state/clarity
+                className={`flex items-center transition-colors duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed rounded-md px-2 py-1 -ml-2
+                    ${ isLiked
+                        ? 'text-blue-600 hover:text-blue-800'
+                        : 'text-gray-500 hover:text-blue-600'
+                    }`}
+            >
+               {isLiking ? (
+                    <Spinner size="sm" className="mr-1.5 w-4 h-4"/> // Adjusted margin
+               ) : (
+                    <FontAwesomeIcon icon={isLiked ? faThumbsUpSolid : faThumbsUpRegular} className="mr-1.5 h-4 w-4"/> // Adjusted margin
+               )}
+               <span className="text-sm font-medium">{displayLikes}</span>
+               <span className="sr-only">Likes</span> {/* Accessibility */}
             </button>
-            <Link to={`/post/${id}#comments`} title="View comments" className="flex items-center text-xs text-gray-500 hover:text-indigo-600">
-                 <FontAwesomeIcon icon={faComment} className="mr-1 h-3 w-3" />
-                 Comments ({commentCount})
+
+            {/* Comment Count Link */}
+            <Link
+                to={`/post/${id}#comments`}
+                title="View comments"
+                className="flex items-center text-sm text-gray-500 hover:text-indigo-600 transition-colors duration-150 ease-in-out rounded-md px-2 py-1 -mr-2" // Added padding/rounding for larger click area
+            >
+                 <FontAwesomeIcon icon={faComment} className="mr-1.5 h-4 w-4" /> {/* Slightly larger icon */}
+                 {commentCount}
+                 <span className="sr-only">Comments</span> {/* Accessibility */}
             </Link>
         </div>
       </div>
     </div>
   );
+  
 };
 
 export default PostCard;

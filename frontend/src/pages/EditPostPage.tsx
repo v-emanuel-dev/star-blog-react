@@ -29,7 +29,6 @@ const EditPostPage: FC = () => {
                 const fetchedPost: Post = await getPostById(id);
                 const initialData: PostFormData = {
                     title: fetchedPost.title,
-                    excerpt: fetchedPost.excerpt || '',
                     content: fetchedPost.content || '',
                     author: fetchedPost.author || '',
                     date: fetchedPost.date || '',

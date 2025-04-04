@@ -5,10 +5,38 @@ const { protect, tryAttachUser } = require('../middleware/authMiddleware'); // I
 
 router.get('/', async (req, res) => {
   try {
-      const sql = `SELECT p.id, p.title, p.excerpt, p.date, p.categories, p.created_at, p.updated_at, u.id AS authorId, u.name AS authorName, COUNT(DISTINCT pl.user_id) AS likes, COUNT(DISTINCT c.id) AS commentCount FROM posts p LEFT JOIN users u ON p.author_id = u.id LEFT JOIN post_likes pl ON p.id = pl.post_id LEFT JOIN comments c ON p.id = c.post_id GROUP BY p.id ORDER BY p.created_at DESC`;
-      const [results] = await pool.query(sql);
-      const finalResults = results.map(post => ({ id: post.id, title: post.title, excerpt: post.excerpt, date: post.date, author: { id: post.authorId, name: post.authorName || 'Unknown Author' }, categories: (typeof post.categories === 'string') ? JSON.parse(post.categories) : post.categories ?? [], likes: Number(post.likes), commentCount: Number(post.commentCount), createdAt: post.created_at, updatedAt: post.updated_at }));
-      res.json(finalResults);
+    // Add p.content to SELECT
+    const sql = `
+        SELECT
+            p.id, p.title, p.content, p.date, p.categories,
+            p.created_at, p.updated_at,
+            u.id AS authorId, u.name AS authorName,
+            COUNT(DISTINCT pl.user_id) AS likes,
+            COUNT(DISTINCT c.id) AS commentCount
+        FROM posts p
+        LEFT JOIN users u ON p.author_id = u.id
+        LEFT JOIN post_likes pl ON p.id = pl.post_id
+        LEFT JOIN comments c ON p.id = c.post_id
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+    `;
+    const [results] = await pool.query(sql);
+
+    // Add content to the mapped object
+    const finalResults = results.map(post => ({
+      id: post.id,
+      title: post.title,
+      content: post.content, // Add content field
+      date: post.date,
+      author: { id: post.authorId, name: post.authorName || 'Unknown Author' },
+      categories: (typeof post.categories === 'string') ? JSON.parse(post.categories) : post.categories ?? [],
+      likes: Number(post.likes),
+      commentCount: Number(post.commentCount),
+      createdAt: post.created_at,
+      updatedAt: post.updated_at
+    }));
+
+    res.json(finalResults);
   } catch (error) { console.error('Error fetching posts:', error); res.status(500).json({ message: "Internal server error while fetching posts.", error: error.message }); }
 });
 
@@ -30,18 +58,18 @@ router.get('/:id', tryAttachUser, async (req, res) => { // Use tryAttachUser
           const [likeCheckResult] = await pool.query(likeCheckSql, [postId, userId]);
           likedByCurrentUser = likeCheckResult[0].count > 0;
       }
-      const post = { id: postData.id, title: postData.title, excerpt: postData.excerpt, content: postData.content, date: postData.date, author: { id: postData.authorId, name: postData.authorName || 'Unknown Author' }, categories: (typeof postData.categories === 'string') ? JSON.parse(postData.categories) : postData.categories ?? [], likes: Number(totalLikes), likedByCurrentUser: likedByCurrentUser, createdAt: postData.created_at, updatedAt: postData.updated_at };
+      const post = { id: postData.id, title: postData.title, content: postData.content, date: postData.date, author: { id: postData.authorId, name: postData.authorName || 'Unknown Author' }, categories: (typeof postData.categories === 'string') ? JSON.parse(postData.categories) : postData.categories ?? [], likes: Number(totalLikes), likedByCurrentUser: likedByCurrentUser, createdAt: postData.created_at, updatedAt: postData.updated_at };
       res.json(post);
   } catch (error) { console.error(`Error fetching post with ID ${postId}:`, error); res.status(500).json({ message: "Internal server error while fetching the post.", error: error.message }); }
 });
 
 router.post('/', protect, async (req, res) => {
   const authorId = req.user.id;
-  const { title, excerpt, content, date, categories } = req.body;
+  const { title, content, date, categories } = req.body;
   if (!title) { return res.status(400).json({ message: "Title is required." }); }
   try {
-      const sql = `INSERT INTO posts (title, excerpt, content, author_id, date, categories) VALUES (?, ?, ?, ?, ?, ?)`;
-      const values = [ title, excerpt || null, content || null, authorId, date || null, JSON.stringify(categories || []) ];
+      const sql = `INSERT INTO posts (title, content, author_id, date, categories) VALUES (?, ?, ?, ?, ?)`;
+      const values = [ title, content || null, authorId, date || null, JSON.stringify(categories || []) ];
       const [results] = await pool.query(sql, values);
       res.status(201).json({ message: "Post successfully created!", insertedId: results.insertId });
   } catch (error) {
@@ -53,7 +81,7 @@ router.post('/', protect, async (req, res) => {
 router.put('/:id', protect, async (req, res) => {
   const postId = req.params.id;
   const userId = req.user.id; // Logged-in user ID from 'protect' middleware
-  const { title, excerpt, content, date, categories } = req.body;
+  const { title, content, date, categories } = req.body;
 
   if (isNaN(parseInt(postId))) { return res.status(400).json({ message: "Invalid post ID." }); }
   if (!title) { return res.status(400).json({ message: "Title is required for updates." }); }
@@ -81,8 +109,8 @@ router.put('/:id', protect, async (req, res) => {
       }
 
       // 3. If ownership verified, proceed with update
-      const sqlUpdate = `UPDATE posts SET title = ?, excerpt = ?, content = ?, date = ?, categories = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
-      const values = [ title, excerpt || null, content || null, date || null, JSON.stringify(categories || []), postId ];
+      const sqlUpdate = `UPDATE posts SET title = ?, content = ?, date = ?, categories = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const values = [ title, content || null, date || null, JSON.stringify(categories || []), postId ];
       const [results] = await connection.query(sqlUpdate, values);
 
       // Check affectedRows just in case (should be 1 if select worked)

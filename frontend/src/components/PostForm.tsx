@@ -5,7 +5,6 @@ import Spinner from './Spinner'; // Import Spinner for button
 // Interface for the form's internal state
 interface PostFormData {
   title: string;
-  excerpt: string;
   content: string;
   date: string;
   categories: string; // Form state uses string
@@ -25,7 +24,7 @@ interface PostFormProps {
 }
 
 const defaultFormData: PostFormData = {
-  title: '', excerpt: '', content: '',
+  title: '', content: '',
   date: new Date().toISOString().slice(0, 10),
   categories: '',
 };
@@ -39,7 +38,6 @@ const PostForm: FC<PostFormProps> = ({
     if (initialData) {
       setFormData({
         title: initialData.title || '',
-        excerpt: initialData.excerpt || '',
         content: initialData.content || '',
         date: initialData.date || new Date().toISOString().slice(0, 10),
         // Correctly uses the string passed in initialData
@@ -62,7 +60,6 @@ const PostForm: FC<PostFormProps> = ({
     const categoriesArray = formData.categories.split(',').map(cat => cat.trim()).filter(cat => cat !== '');
     const dataToSubmit: SubmitPostData = {
       title: formData.title,
-      excerpt: formData.excerpt,
       content: formData.content,
       date: formData.date,
       categories: categoriesArray,
@@ -75,10 +72,6 @@ const PostForm: FC<PostFormProps> = ({
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title:</label>
         <input type="text" id="title" name="title" value={formData.title} onChange={handleChange} required disabled={isLoading} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-      </div>
-      <div>
-        <label htmlFor="excerpt" className="block text-sm font-medium text-gray-700">Excerpt:</label>
-        <textarea id="excerpt" name="excerpt" value={formData.excerpt} onChange={handleChange} rows={3} disabled={isLoading} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
       </div>
       <div>
         <label htmlFor="content" className="block text-sm font-medium text-gray-700">Content:</label>

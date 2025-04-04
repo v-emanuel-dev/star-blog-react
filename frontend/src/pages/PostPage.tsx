@@ -314,9 +314,6 @@ const PostPage: FC = () => {
           <span>{formatDisplayDate(post?.date)}</span> •{" "}
           <span>By: {post.author?.name || "Unknown Author"}</span>
         </div>
-        <div className="prose max-w-none mb-6">
-          <p className="text-gray-700">{post.excerpt}</p>
-        </div>
         <div className="prose max-w-none">
           {post.content ? (
             <p className="text-gray-700">{post.content}</p>
