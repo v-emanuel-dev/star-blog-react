@@ -78,7 +78,7 @@ const PostForm: FC<PostFormProps> = ({
         <textarea id="content" name="content" value={formData.content} onChange={handleChange} rows={10} disabled={isLoading} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
       </div>
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date (YYYY-MM-DD):</label>
+        <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date:</label>
         <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} disabled={isLoading} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
       </div>
       <div>
