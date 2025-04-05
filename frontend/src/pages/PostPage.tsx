@@ -63,9 +63,10 @@ const PostPage: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState<boolean>(false);
 
-  // Delete confirmation modals state
-  const [isDeletePostModalOpen, setIsDeletePostModalOpen] = useState<boolean>(false);
-  const [isDeleteCommentModalOpen, setIsDeleteCommentModalOpen] = useState<boolean>(false);
+  const [isDeletePostModalOpen, setIsDeletePostModalOpen] =
+    useState<boolean>(false);
+  const [isDeleteCommentModalOpen, setIsDeleteCommentModalOpen] =
+    useState<boolean>(false);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
@@ -136,14 +137,13 @@ const PostPage: FC = () => {
 
   const handleDeletePostConfirm = async () => {
     if (!id || !post) return;
-    
-    // Open the confirmation modal
+
     setIsDeletePostModalOpen(true);
   };
 
   const executePostDeletion = async () => {
     if (!id) return;
-    
+
     setIsDeletingPost(true);
     setError(null);
     try {
@@ -217,15 +217,14 @@ const PostPage: FC = () => {
 
   const handleDeleteCommentConfirm = (commentId: number) => {
     if (!token) return;
-    
-    // Store the comment ID and open the confirmation modal
+
     setCommentToDelete(commentId);
     setIsDeleteCommentModalOpen(true);
   };
 
   const executeCommentDeletion = async () => {
     if (!token || commentToDelete === null) return;
-    
+
     setDeletingCommentId(commentToDelete);
     setCommentsError(null);
     try {
@@ -288,7 +287,6 @@ const PostPage: FC = () => {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4">
-      {/* Delete Post Confirmation Modal */}
       <ConfirmationModal
         isOpen={isDeletePostModalOpen}
         onClose={() => setIsDeletePostModalOpen(false)}
@@ -301,7 +299,6 @@ const PostPage: FC = () => {
         isLoading={isDeletingPost}
       />
 
-      {/* Delete Comment Confirmation Modal */}
       <ConfirmationModal
         isOpen={isDeleteCommentModalOpen}
         onClose={() => setIsDeleteCommentModalOpen(false)}
@@ -498,7 +495,9 @@ const PostPage: FC = () => {
                             />
                           </button>
                           <button
-                            onClick={() => handleDeleteCommentConfirm(comment.id)}
+                            onClick={() =>
+                              handleDeleteCommentConfirm(comment.id)
+                            }
                             title="Delete comment"
                             className="text-gray-400 hover:text-red-600 disabled:opacity-50"
                             disabled={
