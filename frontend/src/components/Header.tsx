@@ -217,15 +217,18 @@ const Header: FC = () => {
                 {!isLoading && user && (
                   <>
                     {" "}
+
+                    <Link to="/profile" className={getLinkClasses("/profile")}>
+                      Profile
+                    </Link>{" "}
+
                     <Link
                       to="/new-post"
                       className={getLinkClasses("/new-post")}
                     >
                       New Post
                     </Link>{" "}
-                    <Link to="/profile" className={getLinkClasses("/profile")}>
-                      Profile
-                    </Link>{" "}
+
                   </>
                 )}
                 {!isLoading && user && (
@@ -448,18 +451,18 @@ const Header: FC = () => {
             <>
               {" "}
               <Link
-                to="/new-post"
-                className={getLinkClasses("/new-post", true)}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                New Post
-              </Link>{" "}
-              <Link
                 to="/profile"
                 className={getLinkClasses("/profile", true)}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Profile
+              </Link>{" "}
+              <Link
+                to="/new-post"
+                className={getLinkClasses("/new-post", true)}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                New Post
               </Link>{" "}
             </>
           )}

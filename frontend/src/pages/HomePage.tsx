@@ -66,7 +66,7 @@ const HomePage: FC = () => {
                     type="search" id="search" name="search"
                     value={searchTerm} onChange={handleSearchChange}
                     // Updated placeholder
-                    placeholder="Search by title, content, or category..."
+                    placeholder="Search by title, content or category..."
                     className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
             </div>
