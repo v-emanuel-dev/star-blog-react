@@ -15,6 +15,7 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import Alert from "../components/Alert";
+import ConfirmationModal from "../components/ConfirmationModal";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -61,6 +62,11 @@ const PostPage: FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState<boolean>(false);
+
+  // Delete confirmation modals state
+  const [isDeletePostModalOpen, setIsDeletePostModalOpen] = useState<boolean>(false);
+  const [isDeleteCommentModalOpen, setIsDeleteCommentModalOpen] = useState<boolean>(false);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState<boolean>(true);
@@ -128,25 +134,30 @@ const PostPage: FC = () => {
     };
   }, [id]);
 
-  const handleDeletePost = async () => {
+  const handleDeletePostConfirm = async () => {
     if (!id || !post) return;
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the post "${post.title}"?`
-    );
-    if (confirmDelete) {
-      setIsDeletingPost(true);
-      setError(null);
-      try {
-        await deletePost(id);
-        navigate("/", { replace: true });
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? `Error deleting post: ${err.message}`
-            : "Unknown error."
-        );
-        setIsDeletingPost(false);
-      }
+    
+    // Open the confirmation modal
+    setIsDeletePostModalOpen(true);
+  };
+
+  const executePostDeletion = async () => {
+    if (!id) return;
+    
+    setIsDeletingPost(true);
+    setError(null);
+    try {
+      await deletePost(id);
+      setIsDeletePostModalOpen(false);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `Error deleting post: ${err.message}`
+          : "Unknown error."
+      );
+      setIsDeletingPost(false);
+      setIsDeletePostModalOpen(false);
     }
   };
 
@@ -204,26 +215,32 @@ const PostPage: FC = () => {
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
+  const handleDeleteCommentConfirm = (commentId: number) => {
     if (!token) return;
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this comment?"
-    );
-    if (confirmDelete) {
-      setDeletingCommentId(commentId);
-      setCommentsError(null);
-      try {
-        await deleteComment(commentId);
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
-      } catch (err) {
-        setCommentsError(
-          err instanceof Error
-            ? `Failed to delete comment: ${err.message}`
-            : "Unknown error."
-        );
-      } finally {
-        setDeletingCommentId(null);
-      }
+    
+    // Store the comment ID and open the confirmation modal
+    setCommentToDelete(commentId);
+    setIsDeleteCommentModalOpen(true);
+  };
+
+  const executeCommentDeletion = async () => {
+    if (!token || commentToDelete === null) return;
+    
+    setDeletingCommentId(commentToDelete);
+    setCommentsError(null);
+    try {
+      await deleteComment(commentToDelete);
+      setComments((prev) => prev.filter((c) => c.id !== commentToDelete));
+    } catch (err) {
+      setCommentsError(
+        err instanceof Error
+          ? `Failed to delete comment: ${err.message}`
+          : "Unknown error."
+      );
+    } finally {
+      setDeletingCommentId(null);
+      setCommentToDelete(null);
+      setIsDeleteCommentModalOpen(false);
     }
   };
 
@@ -271,6 +288,32 @@ const PostPage: FC = () => {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4">
+      {/* Delete Post Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeletePostModalOpen}
+        onClose={() => setIsDeletePostModalOpen(false)}
+        onConfirm={executePostDeletion}
+        title="Delete Post"
+        message={`Are you sure you want to delete the post "${post.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+        isLoading={isDeletingPost}
+      />
+
+      {/* Delete Comment Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteCommentModalOpen}
+        onClose={() => setIsDeleteCommentModalOpen(false)}
+        onConfirm={executeCommentDeletion}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+        isLoading={!!deletingCommentId}
+      />
+
       <article className="bg-white rounded-lg shadow-md p-6 relative pb-10 mb-8">
         {loggedInUser && post?.author && loggedInUser.id === post.author.id && (
           <div className="sm:absolute sm:top-4 sm:right-4 flex flex-wrap gap-2 mb-4 sm:mb-0 justify-end">
@@ -281,13 +324,13 @@ const PostPage: FC = () => {
               Edit Post
             </Link>
             <button
-              onClick={handleDeletePost}
+              onClick={handleDeletePostConfirm}
               disabled={isDeletingPost}
               className={`bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-3 rounded transition duration-150 ease-in-out ${
                 isDeletingPost ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              {isDeletingPost ? "Deleting..." : "Delete Post"}
+              Delete Post
             </button>
           </div>
         )}
@@ -455,7 +498,7 @@ const PostPage: FC = () => {
                             />
                           </button>
                           <button
-                            onClick={() => handleDeleteComment(comment.id)}
+                            onClick={() => handleDeleteCommentConfirm(comment.id)}
                             title="Delete comment"
                             className="text-gray-400 hover:text-red-600 disabled:opacity-50"
                             disabled={
