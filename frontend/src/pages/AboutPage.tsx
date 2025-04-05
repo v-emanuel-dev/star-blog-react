@@ -1,124 +1,86 @@
-
 import { FC } from "react";
-import { Link } from "react-router-dom";
 
 const AboutPage: FC = () => {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 sm:p-8">
-        <div className="flex items-center mb-6">
-          
-          <h1 className="text-3xl font-bold text-gray-900">About Star Blog</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">
+          About Star Blog
+        </h1>
 
         <div className="prose prose-indigo max-w-none text-gray-700 space-y-4">
           <p>
-            Welcome to Star Blog! This platform is a demonstration project built
-            with modern web technologies, showcasing a range of features found
-            in typical blogging applications.
+            Welcome to Star Blog! This project showcases modern web development
+            techniques found in full-featured blog applications.
           </p>
 
           <section>
-            <h2 className="text-xl font-semibold !mt-6 !mb-3">
-              Core Blog Features
-            </h2>
-            <ul className="list-disc list-outside space-y-1 pl-5">
+            <h2 className="text-xl font-semibold">Core Blog Features</h2>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>View and read posts on the homepage or individual pages.</li>
+              <li>Create posts via a rich editor (for authenticated users).</li>
+              <li>Edit and delete your own posts.</li>
               <li>
-                View Posts: Browse all articles on the homepage or view
-                individual posts.
+                Search by title, content, or category with real-time results.
               </li>
-              <li>
-                Create Posts: Logged-in users can create new blog posts via a
-                dedicated form.
-              </li>
-              <li>
-                Edit & Delete Posts: Authors can edit or delete their own posts.
-              </li>
-              <li>
-                Search: Quickly find posts by searching titles, content, or
-                categories with real-time filtering.
-              </li>
-              <li>
-                Category Display: Categories are shown alphabetically on each
-                post.
-              </li>
+              <li>Categories displayed alphabetically per post.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold !mt-6 !mb-3">
+            <h2 className="text-xl font-semibold">
               User Accounts & Authentication
             </h2>
-            <ul className="list-disc list-outside space-y-1 pl-5">
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Register with email and upload an avatar.</li>
+              <li>Login via email/password or Google OAuth.</li>
+              <li>Edit profile details and change your password.</li>
               <li>
-                Registration: Create an account with email and password,
-                including avatar upload.
-              </li>
-              <li>
-                Login: Secure login via email/password or Google OAuth.
-              </li>
-              <li>
-                Profile Management: Update name, avatar, and password on your
-                profile page.
-              </li>
-              <li>
-                Protected Actions: Only logged-in users can post, comment, or
-                like content.
+                Restricted access to actions like posting, commenting, and
+                liking.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold !mt-6 !mb-3">
-              Interactive Features
-            </h2>
-            <ul className="list-disc list-outside space-y-1 pl-5">
+            <h2 className="text-xl font-semibold">Interactive Features</h2>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Authenticated users can comment with name and avatar.</li>
+              <li>Edit or delete your own comments.</li>
+              <li>Like/unlike posts with visible like count.</li>
               <li>
-                Comments: Authenticated users can comment. Comments show avatar
-                and name, sorted newest first.
-              </li>
-              <li>
-                Comment Editing/Deletion: Edit or remove your own comments.
-              </li>
-              <li>
-                Likes: Like/unlike posts with a visible like count.
-              </li>
-              <li>
-                Real-time Notifications: Post authors receive instant alerts
-                when someone comments on their post.
+                Real-time notifications when your post receives a comment.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold !mt-6 !mb-3">
-              Technical Stack
-            </h2>
-            <p>This project utilizes a modern stack including:</p>
-            <ul className="list-disc list-outside space-y-1 pl-5">
+            <h2 className="text-xl font-semibold">Technical Stack</h2>
+            <p>This project uses a modern web stack:</p>
+            <ul className="list-disc pl-5 space-y-1">
               <li>
-                Frontend: React (TypeScript), Vite, Tailwind CSS, React Router
-                DOM, Socket.IO, FontAwesome.
+                Frontend: React (TypeScript), Vite, Tailwind CSS, React Router,
+                Socket.IO.
               </li>
               <li>
-                Backend: Node.js with Express, MySQL (via mysql2), JWT, bcrypt,
-                Passport.js (Google OAuth), Multer, Socket.IO.
+                Backend: Node.js, Express, MySQL, JWT, bcrypt, Passport.js,
+                Multer, Socket.IO.
               </li>
-              <li>Styling: Utility-first with Tailwind CSS.</li>
+              <li>Styling: Tailwind CSS utility-first approach.</li>
             </ul>
           </section>
 
-          <p className="!mt-6">
-            Explore the blog, create an account, and test the features. Check
-            out the code on{" "}
-            <Link
-              to="https://github.com/v-emanuel-dev/star-blog-react"
+          <p>
+            Explore the blog, register an account, and test all features. View
+            the source code on{" "}
+            <a
+              href="https://github.com/v-emanuel-dev/star-blog-react"
               target="_blank"
               rel="noopener noreferrer"
               className="text-indigo-600 hover:underline"
             >
               GitHub
-            </Link>
+            </a>
             .
           </p>
         </div>
