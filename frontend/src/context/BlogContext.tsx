@@ -1,4 +1,12 @@
-import { createContext, useContext, FC, ReactNode, useState, useEffect } from 'react';
+import {
+  createContext,
+  FC,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 interface BlogContextType {
   favorites: number[];
@@ -15,33 +23,36 @@ interface BlogProviderProps {
 
 export const BlogProvider: FC<BlogProviderProps> = ({ children }) => {
   const [favorites, setFavorites] = useState<number[]>(() => {
-    const storedFavorites = localStorage.getItem('favorites');
-    return storedFavorites ? JSON.parse(storedFavorites) : [];
+    try {
+      const stored = localStorage.getItem('favorites');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  const addToFavorites = (postId: number): void => {
-    if (!favorites.includes(postId)) {
-      setFavorites(prev => [...prev, postId]);
-    }
-  };
+  const addToFavorites = useCallback((postId: number) => {
+    setFavorites(prev => (prev.includes(postId) ? prev : [...prev, postId]));
+  }, []);
 
-  const removeFromFavorites = (postId: number): void => {
+  const removeFromFavorites = useCallback((postId: number) => {
     setFavorites(prev => prev.filter(id => id !== postId));
-  };
+  }, []);
 
-  const isFavorite = (postId: number): boolean => {
-    return favorites.includes(postId);
-  };
+  const isFavorite = useCallback(
+    (postId: number) => favorites.includes(postId),
+    [favorites]
+  );
 
-  const value: BlogContextType = {
+  const value = {
     favorites,
     addToFavorites,
     removeFromFavorites,
-    isFavorite
+    isFavorite,
   };
 
   return <BlogContext.Provider value={value}>{children}</BlogContext.Provider>;
@@ -49,8 +60,6 @@ export const BlogProvider: FC<BlogProviderProps> = ({ children }) => {
 
 export const useBlog = (): BlogContextType => {
   const context = useContext(BlogContext);
-  if (context === undefined) {
-    throw new Error('useBlog must be used within a BlogProvider');
-  }
+  if (!context) throw new Error('useBlog must be used within a BlogProvider');
   return context;
 };

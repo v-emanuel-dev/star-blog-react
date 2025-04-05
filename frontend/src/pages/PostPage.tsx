@@ -1,31 +1,31 @@
-import React, {
-  FC,
-  useState,
-  useEffect,
-  ChangeEvent,
-  FormEvent,
-  useCallback,
-} from "react";
-import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { Post, Comment } from "../types";
-import {
-  getPostById,
-  deletePost,
-  getCommentsForPost,
-  addComment,
-  editComment,
-  deleteComment,
-} from "../services/api";
-import { useAuth } from "../context/AuthContext";
-import Alert from "../components/Alert";
-import Spinner from "../components/Spinner";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEdit,
-  faTrashAlt,
   faSave,
   faTimes,
+  faTrashAlt,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  ChangeEvent,
+  FC,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import Alert from "../components/Alert";
+import Spinner from "../components/Spinner";
+import { useAuth } from "../context/AuthContext";
+import {
+  addComment,
+  deleteComment,
+  deletePost,
+  editComment,
+  getCommentsForPost,
+  getPostById,
+} from "../services/api";
+import { Comment, Post } from "../types";
 import { formatDisplayDate, formatDisplayDateTime } from "../utils/dateUtils";
 
 const DefaultAvatar: FC<{ className?: string }> = ({
@@ -59,22 +59,19 @@ const PostPage: FC = () => {
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null); // For post loading/deleting errors
+  const [error, setError] = useState<string | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState<boolean>(false);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState<boolean>(true);
-  const [commentsError, setCommentsError] = useState<string | null>(null); // For comment fetch/add/edit/delete errors
+  const [commentsError, setCommentsError] = useState<string | null>(null);
 
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
-  // State needed for comment editing
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editedCommentContent, setEditedCommentContent] = useState<string>("");
   const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
-  // State needed for comment deleting
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(
     null
   );
@@ -297,7 +294,6 @@ const PostPage: FC = () => {
         <h1 className="text-3xl font-bold mb-4 text-gray-900 sm:pr-32">
           {post.title}
         </h1>
-        {/* Use sortedCategories here */}
         {sortedCategories.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1">
             {sortedCategories.map((category, index) => (

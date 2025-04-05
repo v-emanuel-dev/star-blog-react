@@ -1,46 +1,36 @@
-// src/utils/dateUtils.ts
-
-// Internal helper using native Date
 const formatDateInternal = (
-    dateInput: string | undefined | null,
-    formatOptions: Intl.DateTimeFormatOptions, // Accept options object
-    locale: string = 'en-US' // Default locale changed to en-US
+  dateInput: string | null | undefined,
+  options: Intl.DateTimeFormatOptions,
+  locale = "en-US"
 ): string => {
-    if (!dateInput) return '';
-    try {
-        const date = new Date(dateInput);
-        if (isNaN(date.getTime())) {
-             console.error("Native Date() produced Invalid Date for:", dateInput);
-             return String(dateInput || '');
-        }
-        // Use provided locale and options
-        return date.toLocaleString(locale, formatOptions);
-    } catch (error) {
-        console.error("Error formatting date:", dateInput, error);
-        return String(dateInput || '');
-    }
-}
+  if (!dateInput) return "";
 
-// Function for displaying Date only (e.g., March 31, 2025)
-export const formatDisplayDate = (dateString: string | undefined | null): string => {
-     const options: Intl.DateTimeFormatOptions = {
-        year: 'numeric',
-        month: 'long', // Use long month name
-        day: 'numeric',
-        // timeZone: 'UTC' // Optional: Add if dates seem off by a day due to timezone
-    };
-    return formatDateInternal(dateString, options, 'en-US'); // Pass en-US locale
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) {
+    console.error("Invalid Date:", dateInput);
+    return String(dateInput ?? "");
+  }
+
+  return date.toLocaleString(locale, options);
 };
 
-// Function for displaying Date and Time (e.g., March 31, 2025, 6:30 AM)
-export const formatDisplayDateTime = (dateString: string | undefined | null): string => {
-     const options: Intl.DateTimeFormatOptions = {
-        year: 'numeric',
-        month: 'long', // Use long month name for consistency
-        day: 'numeric',
-        hour: 'numeric', // Use numeric hour
-        minute: '2-digit', // Ensure two digits for minute
-        hour12: true // Use AM/PM format
-    };
-     return formatDateInternal(dateString, options, 'en-US'); // Pass en-US locale
-};
+export const formatDisplayDate = (
+  dateString: string | null | undefined
+): string =>
+  formatDateInternal(dateString, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+export const formatDisplayDateTime = (
+  dateString: string | null | undefined
+): string =>
+  formatDateInternal(dateString, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
