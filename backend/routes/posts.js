@@ -185,17 +185,43 @@ router.put('/:id', protect, async (req, res) => {
 });
 
 router.delete("/:id", protect, async (req, res) => {
-  const postId = parseInt(req.params.id);
-  if (isNaN(postId)) return res.status(400).json({ message: "Invalid post ID." });
+  const postId = req.params.id;
+  const userId = req.user.id;
 
+  if (isNaN(parseInt(postId))) { return res.status(400).json({ message: "Invalid post ID." }); }
+
+  let connection;
   try {
-    const [results] = await pool.query("DELETE FROM posts WHERE id = ?", [postId]);
-    if (results.affectedRows === 0) return res.status(404).json({ message: "Post not found for deletion." });
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
 
-    res.status(200).json({ message: "Post successfully deleted!" });
+      const [posts] = await connection.query("SELECT author_id FROM posts WHERE id = ?", [postId]);
+      if (posts.length === 0) {
+          await connection.rollback();
+          return res.status(404).json({ message: "Post not found." });
+      }
+      if (posts[0].author_id !== userId) {
+          await connection.rollback();
+          return res.status(403).json({ message: "User not authorized to delete this post." });
+      }
+
+      const sql = "DELETE FROM posts WHERE id = ?";
+      const [results] = await connection.query(sql, [postId]);
+
+      if (results.affectedRows === 0) {
+           await connection.rollback();
+           return res.status(404).json({ message: "Post not found during delete attempt." });
+      }
+
+      await connection.commit();
+
+      res.status(200).json({ message: "Post successfully deleted!" });
   } catch (error) {
-    console.error(`Error deleting post with ID ${postId}:`, error);
-    res.status(500).json({ message: "Internal server error while deleting the post.", error: error.message });
+      if (connection) await connection.rollback();
+      console.error(`Error deleting post with ID ${postId}:`, error);
+      res.status(500).json({ message: "Internal server error while deleting the post.", error: error.message });
+  } finally {
+      if (connection) connection.release();
   }
 });
 
