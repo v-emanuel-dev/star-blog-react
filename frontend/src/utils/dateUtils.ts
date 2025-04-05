@@ -44,27 +44,3 @@ export const formatDisplayDateTime = (dateString: string | undefined | null): st
     };
      return formatDateInternal(dateString, options, 'en-US'); // Pass en-US locale
 };
-
-/*
-// --- OR If using date-fns ---
-import { format, parseISO, isValid } from 'date-fns';
-import { enUS } from 'date-fns/locale'; // Import enUS locale
-
-export const formatDisplayDate = (dateString: string | undefined | null): string => {
-    if (!dateString) return '';
-    try {
-        const date = parseISO(dateString);
-        if (!isValid(date)) return dateString;
-        return format(date, 'PPP', { locale: enUS }); // Example: Mar 31st, 2025
-    } catch (error) { return String(dateString); }
-};
-
-export const formatDisplayDateTime = (dateString: string | undefined | null): string => {
-    if (!dateString) return '';
-    try {
-        const date = parseISO(dateString);
-        if (!isValid(date)) return dateString;
-        return format(date, 'Pp', { locale: enUS }); // Example: 03/31/2025, 6:30 AM
-    } catch (error) { return String(dateString); }
-};
-*/

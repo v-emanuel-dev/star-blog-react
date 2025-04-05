@@ -49,7 +49,7 @@ const AboutPage: FC = () => {
                  This project utilizes a modern stack including:
              </p>
             <ul className="list-disc list-outside space-y-1 pl-5">
-                 <li>Frontend: React with TypeScript, Vite, Tailwind CSS, React Router DOM, Socket.IO Client, date-fns, FontAwesome.</li>
+                 <li>Frontend: React with TypeScript, Vite, Tailwind CSS, React Router DOM, Socket.IO Client, FontAwesome.</li>
                  <li>Backend: Node.js with Express, MySQL (using mysql2), JWT for authentication, bcrypt for password hashing, Passport.js for Google OAuth, Multer for file uploads, Socket.IO.</li>
                  <li>Styling: Primarily utility-first CSS using Tailwind CSS.</li>
             </ul>
