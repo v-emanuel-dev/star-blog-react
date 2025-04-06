@@ -5,6 +5,23 @@ import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { registerUser } from "../services/api";
 
+const DefaultAvatar: FC<{ className?: string }> = ({
+  className = "h-full w-full text-gray-400",
+}) => (
+  <svg
+    className={className}
+    fill="currentColor"
+    viewBox="0 0 20 20"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      fillRule="evenodd"
+      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
 const RegisterPage: FC = () => {
   const navigate = useNavigate();
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -14,6 +31,7 @@ const RegisterPage: FC = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +45,14 @@ const RegisterPage: FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setAvatarFile(file);
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAvatarPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setAvatarPreview(null);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -127,27 +153,45 @@ const RegisterPage: FC = () => {
               placeholder="your.email@example.com"
             />
           </div>
-          <div>
+
+          <div className="space-y-2">
             <label
               htmlFor="avatarImage"
               className="block text-sm font-medium text-gray-700"
             >
               Avatar Image (Optional):
             </label>
-            <input
-              type="file"
-              id="avatarImage"
-              accept="image/png, image/jpeg, image/gif"
-              onChange={handleFileChange}
-              disabled={isLoading}
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 disabled:opacity-50"
-            />
-            {avatarFile && (
-              <p className="text-xs text-gray-500 mt-1">
-                Selected: {avatarFile.name}
-              </p>
-            )}
+
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0">
+                {avatarPreview ? (
+                  <img
+                    className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500"
+                    src={avatarPreview}
+                    alt="Avatar Preview"
+                  />
+                ) : (
+                  <span className="inline-block h-20 w-20 overflow-hidden rounded-full bg-gray-200 ring-2 ring-offset-2 ring-indigo-500">
+                    <DefaultAvatar />
+                  </span>
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  type="file"
+                  id="avatarImage"
+                  accept="image/png, image/jpeg, image/gif"
+                  onChange={handleFileChange}
+                  disabled={isLoading}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 disabled:opacity-50"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Max 5MB (PNG, JPG, GIF)
+                </p>
+              </div>
+            </div>
           </div>
+
           <div>
             <label
               htmlFor="password-register"
@@ -194,7 +238,14 @@ const RegisterPage: FC = () => {
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              {isLoading ? "Registering..." : "Register"}
+              {isLoading ? (
+                <>
+                  <Spinner size="sm" color="text-white" className="mr-2" />
+                  Registering...
+                </>
+              ) : (
+                "Register"
+              )}
             </button>
           </div>
         </form>
